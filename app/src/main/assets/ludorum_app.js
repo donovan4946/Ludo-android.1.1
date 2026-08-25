@@ -1186,11 +1186,14 @@
 
 
   function isLudoMatchPage() {
-    const p = path();
+    const currentPath =
+      String(
+        location.pathname || ''
+      ).toLowerCase();
 
     return (
-      p.includes('/ludomatch') ||
-      p.includes('/ludo-match')
+      currentPath.includes('/ludomatch') ||
+      currentPath.includes('/ludo-match')
     );
   }
 
@@ -1198,6 +1201,8 @@
     '.add_to_cart_button',
     '.ajax_add_to_cart',
     '.single_add_to_cart_button',
+    '[data-product_id].button',
+    '[data-product-id].button',
     'a[data-product_id]',
     'a[data-product-id]',
     'button[data-product_id]',
@@ -1208,38 +1213,28 @@
     'button[name="add_to_cart"]'
   ].join(',');
 
-  function ludoProductIdFromControl(control) {
-    if (!control) return 0;
+  function ludoMatchProductId(element) {
+    if (!element) return 0;
 
-    const rawValues = [
-      control.dataset && control.dataset.productId,
-      control.dataset && control.dataset.product_id,
-      control.getAttribute &&
-        control.getAttribute('data-product_id'),
-      control.getAttribute &&
-        control.getAttribute('data-product-id'),
-      control.getAttribute &&
-        control.getAttribute('value')
+    const values = [
+      element.dataset && element.dataset.productId,
+      element.dataset && element.dataset.product_id,
+      element.getAttribute &&
+        element.getAttribute('data-product_id'),
+      element.getAttribute &&
+        element.getAttribute('data-product-id'),
+      element.getAttribute &&
+        element.getAttribute('value')
     ];
 
-    for (const raw of rawValues) {
-      const id =
-        parseInt(
-          raw || '0',
-          10
-        );
-
-      if (id > 0) {
-        return id;
-      }
+    for (const value of values) {
+      const id = parseInt(value || '0', 10);
+      if (id > 0) return id;
     }
 
     const href =
-      control.getAttribute &&
-      (
-        control.getAttribute('href') ||
-        ''
-      );
+      element.getAttribute &&
+      (element.getAttribute('href') || '');
 
     if (href) {
       const match =
@@ -1248,21 +1243,14 @@
         );
 
       if (match) {
-        const id =
-          parseInt(
-            match[1],
-            10
-          );
-
-        if (id > 0) {
-          return id;
-        }
+        const id = parseInt(match[1] || '0', 10);
+        if (id > 0) return id;
       }
     }
 
     const form =
-      control.closest &&
-      control.closest('form');
+      element.closest &&
+      element.closest('form');
 
     if (form) {
       const field =
@@ -1282,46 +1270,19 @@
             10
           );
 
-        if (id > 0) {
-          return id;
-        }
-      }
-    }
-
-    const card =
-      ludoMatchCard(control);
-
-    if (card) {
-      const nested =
-        card.querySelector(
-          '[data-product_id],' +
-          '[data-product-id],' +
-          'a[href*="add-to-cart="],' +
-          'a[href*="add_to_cart="]'
-        );
-
-      if (
-        nested &&
-        nested !== control
-      ) {
-        return ludoProductIdFromControl(
-          nested
-        );
+        if (id > 0) return id;
       }
     }
 
     return 0;
   }
 
-  function ludoProductSlugFromHref(href) {
+  function ludoMatchProductSlug(href) {
     if (!href) return '';
 
     try {
       const url =
-        new URL(
-          href,
-          location.href
-        );
+        new URL(href, location.href);
 
       const match =
         url.pathname.match(
@@ -1329,9 +1290,7 @@
         );
 
       return match
-        ? decodeURIComponent(
-            match[1]
-          )
+        ? decodeURIComponent(match[1])
         : '';
 
     } catch (_) {
@@ -1343,44 +1302,37 @@
     if (!element) return null;
 
     const selectors = [
-      '[data-product_id]',
-      '[data-product-id]',
       '.ludomatch-result',
       '.ludomatch-card',
       '.ludo-result',
       '.recommendation',
       '.recommendation-card',
       '.product-card',
-      '.product',
       'li.product',
       'article.product',
+      '.product',
       'article'
     ];
 
     for (const selector of selectors) {
       const card =
         element.closest &&
-        element.closest(
-          selector
-        );
+        element.closest(selector);
 
-      if (card) {
-        return card;
-      }
+      if (card) return card;
     }
 
-    let node =
-      element.parentElement;
+    let node = element.parentElement;
 
     for (
       let depth = 0;
-      depth < 5 &&
+      depth < 6 &&
       node &&
       node !== document.body;
       depth += 1,
       node = node.parentElement
     ) {
-      const productLinks =
+      const links =
         node.querySelectorAll
           ? node.querySelectorAll(
               'a[href*="/produit/"],' +
@@ -1388,61 +1340,49 @@
             )
           : [];
 
-      if (productLinks.length === 1) {
-        return node;
-      }
+      if (links.length === 1) return node;
     }
 
     return element.parentElement;
   }
 
-  function ludoProductSlugFromControl(control) {
-    if (!control) return '';
+  function ludoMatchProductLink(card) {
+    if (!card) return null;
 
+    return card.querySelector(
+      'a[href*="/produit/"],' +
+      'a[href*="/product/"]'
+    );
+  }
+
+  function ludoMatchSlugForElement(element) {
     const ownHref =
-      control.getAttribute &&
-      (
-        control.getAttribute('href') ||
-        ''
-      );
+      element &&
+      element.getAttribute &&
+      (element.getAttribute('href') || '');
 
     let slug =
-      ludoProductSlugFromHref(
-        ownHref
-      );
+      ludoMatchProductSlug(ownHref);
 
-    if (slug) {
-      return slug;
-    }
+    if (slug) return slug;
 
     const card =
-      ludoMatchCard(control);
+      ludoMatchCard(element);
 
-    if (!card) {
-      return '';
-    }
+    const link =
+      ludoMatchProductLink(card);
 
-    const productLink =
-      card.querySelector(
-        'a[href*="/produit/"],' +
-        'a[href*="/product/"]'
-      );
+    if (!link) return '';
 
-    if (!productLink) {
-      return '';
-    }
-
-    return ludoProductSlugFromHref(
-      productLink.getAttribute('href') ||
-      productLink.href ||
+    return ludoMatchProductSlug(
+      link.getAttribute('href') ||
+      link.href ||
       ''
     );
   }
 
   function removeWooViewCartLinks() {
-    if (!isLudoMatchPage()) {
-      return;
-    }
+    if (!isLudoMatchPage()) return;
 
     document
       .querySelectorAll(
@@ -1461,13 +1401,49 @@
           );
         }
       });
+
+    document
+      .querySelectorAll('a')
+      .forEach((anchor) => {
+        const label =
+          String(anchor.textContent || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+        const href =
+          String(
+            anchor.getAttribute('href') || ''
+          ).toLowerCase();
+
+        if (
+          (
+            label === 'voir le panier' ||
+            label === 'view cart'
+          ) &&
+          (
+            href.includes('/panier') ||
+            href.includes('/cart')
+          )
+        ) {
+          try {
+            anchor.remove();
+          } catch (_) {
+            anchor.style.setProperty(
+              'display',
+              'none',
+              'important'
+            );
+          }
+        }
+      });
   }
 
-  function installLudoMatchCartCss() {
+  function installLudoMatchNativeCss() {
     if (
       !isLudoMatchPage() ||
       document.getElementById(
-        'ludorum-ludomatch-cart-css'
+        'ludorum-ludomatch-native-css'
       )
     ) {
       return;
@@ -1477,145 +1453,134 @@
       document.createElement('style');
 
     style.id =
-      'ludorum-ludomatch-cart-css';
+      'ludorum-ludomatch-native-css';
 
     style.textContent = `
+      body .added_to_cart,
       body .added_to_cart.wc-forward,
-      body a.added_to_cart,
       body a.wc-forward.added_to_cart {
         display: none !important;
         visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
       }
 
-      .ludorum-match-native-cart {
+      body .ludorum-match-original-woo-add {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+
+      body .ludorum-match-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
         width: 100% !important;
-        min-height: 44px !important;
         margin-top: 10px !important;
-        padding: 10px 14px !important;
-        border: 0 !important;
-        border-radius: 13px !important;
-        background: #246BFD !important;
-        color: #fff !important;
-        font-weight: 800 !important;
-        font-size: 14px !important;
         box-sizing: border-box !important;
+      }
+
+      body .ludorum-match-view-product,
+      body .ludorum-match-native-cart {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 44px !important;
+        padding: 10px 9px !important;
+        border-radius: 13px !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+        text-decoration: none !important;
+        font-size: 13px !important;
+        line-height: 1.15 !important;
+        font-weight: 800 !important;
+        box-shadow: none !important;
+      }
+
+      body .ludorum-match-view-product {
+        border: 1px solid #0B4DBB !important;
+        background: #FFFFFF !important;
+        color: #0B4DBB !important;
+      }
+
+      body .ludorum-match-native-cart {
+        border: 1px solid #0B4DBB !important;
+        background: #0B4DBB !important;
+        color: #FFFFFF !important;
+      }
+
+      body .ludorum-match-native-cart:disabled {
+        opacity: .68 !important;
       }
     `;
 
     (
       document.head ||
       document.documentElement
-    ).appendChild(
-      style
-    );
+    ).appendChild(style);
   }
 
-  function setLudoMatchButtonBusy(
-    button,
-    busy
-  ) {
+  function setLudoMatchAddState(button, state) {
     if (!button) return;
 
-    if (
-      !button.dataset.ludorumOriginalText
-    ) {
-      button.dataset.ludorumOriginalText =
-        (
-          button.textContent ||
-          'Ajouter au panier'
-        ).trim();
-    }
-
-    button.dataset.ludorumAdding =
-      busy
-        ? '1'
-        : '0';
-
-    try {
-      button.disabled = !!busy;
-    } catch (_) {}
-
-    if (busy) {
-      button.textContent =
-        'Ajout…';
-
+    if (state === 'loading') {
+      button.dataset.loading = '1';
+      button.disabled = true;
+      button.textContent = 'Ajout…';
       button.setAttribute(
         'aria-busy',
         'true'
       );
-
-    } else {
-      button.removeAttribute(
-        'aria-busy'
-      );
+      return;
     }
+
+    button.dataset.loading = '0';
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+
+    if (state === 'success') {
+      button.textContent = '✓ Ajouté';
+      return;
+    }
+
+    if (state === 'error') {
+      button.textContent = 'Réessayer';
+      return;
+    }
+
+    button.textContent =
+      'Ajouter au panier';
   }
 
-  function markLudoMatchControl(
-    control,
-    productId,
-    slug
-  ) {
-    if (!control) return;
-
-    control.dataset.ludorumNativeCart =
-      '1';
-
-    if (productId > 0) {
-      control.dataset.ludorumProductId =
-        String(
-          productId
-        );
-    }
-
-    if (slug) {
-      control.dataset.ludorumSlug =
-        slug;
-    }
-  }
-
-  function nativeAddFromLudoMatchControl(
-    control
-  ) {
+  function addLudoMatchProduct(button) {
     if (
-      !control ||
-      !window.LudorumAndroidBridge
+      !button ||
+      button.dataset.loading === '1'
     ) {
-      return false;
-    }
-
-    if (
-      control.dataset.ludorumAdding ===
-      '1'
-    ) {
-      return true;
+      return;
     }
 
     const productId =
-      ludoProductIdFromControl(
-        control
+      parseInt(
+        button.dataset.productId || '0',
+        10
       );
 
     const slug =
-      control.dataset.ludorumSlug ||
-      ludoProductSlugFromControl(
-        control
-      );
+      button.dataset.slug || '';
 
-    markLudoMatchControl(
-      control,
-      productId,
-      slug
-    );
-
-    setLudoMatchButtonBusy(
-      control,
-      true
+    setLudoMatchAddState(
+      button,
+      'loading'
     );
 
     try {
       if (
         productId > 0 &&
+        window.LudorumAndroidBridge &&
         typeof window
           .LudorumAndroidBridge
           .addProductIdToCart ===
@@ -1623,15 +1588,14 @@
       ) {
         window
           .LudorumAndroidBridge
-          .addProductIdToCart(
-            productId
-          );
+          .addProductIdToCart(productId);
 
-        return true;
+        return;
       }
 
       if (
         slug &&
+        window.LudorumAndroidBridge &&
         typeof window
           .LudorumAndroidBridge
           .addProductSlugToCart ===
@@ -1639,27 +1603,154 @@
       ) {
         window
           .LudorumAndroidBridge
-          .addProductSlugToCart(
-            slug
-          );
+          .addProductSlugToCart(slug);
 
-        return true;
+        return;
       }
 
     } catch (_) {}
 
-    setLudoMatchButtonBusy(
-      control,
-      false
+    setLudoMatchAddState(
+      button,
+      'error'
     );
-
-    control.textContent =
-      'Réessayer';
-
-    return false;
   }
 
-  function wireLudoMatchCartControls() {
+  function installLudoMatchActions(
+    card,
+    wooControl,
+    productLink
+  ) {
+    if (
+      !card ||
+      card.querySelector(
+        '.ludorum-match-actions'
+      )
+    ) {
+      return;
+    }
+
+    const productId =
+      ludoMatchProductId(wooControl);
+
+    let slug =
+      ludoMatchSlugForElement(wooControl);
+
+    if (!productLink) {
+      productLink =
+        ludoMatchProductLink(card);
+    }
+
+    if (
+      !slug &&
+      productLink
+    ) {
+      slug =
+        ludoMatchProductSlug(
+          productLink.getAttribute('href') ||
+          productLink.href ||
+          ''
+        );
+    }
+
+    if (
+      productId <= 0 &&
+      !slug
+    ) {
+      return;
+    }
+
+    const actions =
+      document.createElement('div');
+
+    actions.className =
+      'ludorum-match-actions';
+
+    if (productLink) {
+      const viewProduct =
+        document.createElement('a');
+
+      viewProduct.className =
+        'ludorum-match-view-product';
+
+      viewProduct.href =
+        productLink.getAttribute('href') ||
+        productLink.href ||
+        '#';
+
+      viewProduct.textContent =
+        'Voir le produit';
+
+      actions.appendChild(viewProduct);
+    }
+
+    const addButton =
+      document.createElement('button');
+
+    addButton.type = 'button';
+
+    addButton.className =
+      'ludorum-match-native-cart';
+
+    addButton.dataset.productId =
+      productId > 0
+        ? String(productId)
+        : '';
+
+    addButton.dataset.slug =
+      slug || '';
+
+    addButton.textContent =
+      'Ajouter au panier';
+
+    addButton.addEventListener(
+      'click',
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        addLudoMatchProduct(
+          addButton
+        );
+      },
+      true
+    );
+
+    actions.appendChild(addButton);
+
+    if (wooControl) {
+      wooControl.classList.add(
+        'ludorum-match-original-woo-add'
+      );
+
+      wooControl.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+
+      wooControl.setAttribute(
+        'tabindex',
+        '-1'
+      );
+
+      wooControl.style.setProperty(
+        'display',
+        'none',
+        'important'
+      );
+
+      wooControl.insertAdjacentElement(
+        'afterend',
+        actions
+      );
+
+    } else {
+      card.appendChild(actions);
+    }
+  }
+
+  function rebuildLudoMatchNativeActions() {
     if (
       !isLudoMatchPage() ||
       !window.LudorumAndroidBridge
@@ -1667,155 +1758,128 @@
       return;
     }
 
-    installLudoMatchCartCss();
+    installLudoMatchNativeCss();
     removeWooViewCartLinks();
 
     document
       .querySelectorAll(
         LUDORUM_WOO_ADD_SELECTOR
       )
-      .forEach((control) => {
+      .forEach((wooControl) => {
         if (
-          control.classList &&
-          control.classList.contains(
-            'added_to_cart'
+          wooControl.classList &&
+          (
+            wooControl.classList.contains(
+              'ludorum-match-native-cart'
+            ) ||
+            wooControl.classList.contains(
+              'ludorum-match-original-woo-add'
+            )
           )
         ) {
           return;
         }
 
-        const productId =
-          ludoProductIdFromControl(
-            control
-          );
+        const card =
+          ludoMatchCard(wooControl);
 
-        const slug =
-          ludoProductSlugFromControl(
-            control
-          );
+        if (!card) return;
 
-        markLudoMatchControl(
-          control,
-          productId,
-          slug
+        installLudoMatchActions(
+          card,
+          wooControl,
+          ludoMatchProductLink(card)
         );
       });
 
-    // Si une recommandation n'a pas de bouton Woo natif,
-    // on lui ajoute seulement alors notre bouton Ludorum.
     document
       .querySelectorAll(
         'a[href*="/produit/"],' +
         'a[href*="/product/"]'
       )
-      .forEach((link) => {
-        const slug =
-          ludoProductSlugFromHref(
-            link.getAttribute('href') ||
-            link.href ||
-            ''
-          );
-
-        if (!slug) {
-          return;
-        }
-
+      .forEach((productLink) => {
         const card =
-          ludoMatchCard(
-            link
-          );
-
-        if (!card) {
-          return;
-        }
+          ludoMatchCard(productLink);
 
         if (
+          !card ||
           card.querySelector(
-            LUDORUM_WOO_ADD_SELECTOR
-          ) ||
-          card.querySelector(
-            '.ludorum-match-native-cart'
+            '.ludorum-match-actions'
           )
         ) {
           return;
         }
 
-        const button =
-          document.createElement(
-            'button'
+        const wooControl =
+          card.querySelector(
+            LUDORUM_WOO_ADD_SELECTOR
           );
 
-        button.type =
-          'button';
-
-        button.className =
-          'ludorum-match-native-cart';
-
-        button.dataset.ludorumSlug =
-          slug;
-
-        button.dataset.ludorumNativeCart =
-          '1';
-
-        button.textContent =
-          'Ajouter au panier';
-
-        card.appendChild(
-          button
+        installLudoMatchActions(
+          card,
+          wooControl,
+          productLink
         );
       });
+
+    removeWooViewCartLinks();
   }
 
   if (
-    !window.__ludorumMatchCaptureInstalled
+    !window.__ludorumMatchHardBlockInstalled
   ) {
-    window.__ludorumMatchCaptureInstalled =
+    window.__ludorumMatchHardBlockInstalled =
       true;
 
     document.addEventListener(
       'click',
       (event) => {
-        if (!isLudoMatchPage()) {
-          return;
-        }
+        if (!isLudoMatchPage()) return;
 
-        const target =
+        const wooControl =
           event.target &&
           event.target.closest
             ? event.target.closest(
-                LUDORUM_WOO_ADD_SELECTOR +
-                ',.ludorum-match-native-cart'
+                LUDORUM_WOO_ADD_SELECTOR
               )
             : null;
 
-        if (!target) {
-          return;
-        }
+        if (!wooControl) return;
 
         if (
-          target.classList &&
-          target.classList.contains(
-            'added_to_cart'
+          wooControl.classList &&
+          wooControl.classList.contains(
+            'ludorum-match-native-cart'
           )
         ) {
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-
-          removeWooViewCartLinks();
-
           return;
         }
 
-        // PRIORITÉ ABSOLUE à notre panier natif :
-        // on coupe WooCommerce avant son handler AJAX.
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
 
-        nativeAddFromLudoMatchControl(
-          target
-        );
+        const card =
+          ludoMatchCard(wooControl);
+
+        if (card) {
+          installLudoMatchActions(
+            card,
+            wooControl,
+            ludoMatchProductLink(card)
+          );
+
+          const nativeButton =
+            card.querySelector(
+              '.ludorum-match-native-cart'
+            );
+
+          if (nativeButton) {
+            addLudoMatchProduct(
+              nativeButton
+            );
+          }
+        }
 
         removeWooViewCartLinks();
       },
@@ -1823,140 +1887,91 @@
     );
   }
 
+  function finishLudoMatchButtons(
+    matcher,
+    state,
+    delay,
+    message
+  ) {
+    document
+      .querySelectorAll(
+        '.ludorum-match-native-cart'
+      )
+      .forEach((button) => {
+        if (!matcher(button)) return;
+
+        if (message) {
+          button.title = message;
+        }
+
+        setLudoMatchAddState(
+          button,
+          state
+        );
+
+        setTimeout(() => {
+          if (!button.isConnected) return;
+
+          setLudoMatchAddState(
+            button,
+            'idle'
+          );
+        }, delay);
+      });
+
+    removeWooViewCartLinks();
+  }
+
   window.__ludorumMatchCartSuccessId =
     function(productId) {
-      document
-        .querySelectorAll(
-          '[data-ludorum-product-id="' +
-          String(productId) +
-          '"]'
-        )
-        .forEach((button) => {
-          setLudoMatchButtonBusy(
-            button,
-            false
-          );
-
-          button.textContent =
-            '✓ Ajouté';
-
-          setTimeout(() => {
-            if (!button.isConnected) {
-              return;
-            }
-
-            button.textContent =
-              button.dataset
-                .ludorumOriginalText ||
-              'Ajouter au panier';
-          }, 900);
-        });
-
-      removeWooViewCartLinks();
+      finishLudoMatchButtons(
+        (button) =>
+          parseInt(
+            button.dataset.productId || '0',
+            10
+          ) === productId,
+        'success',
+        900,
+        ''
+      );
     };
 
   window.__ludorumMatchCartErrorId =
     function(productId, message) {
-      document
-        .querySelectorAll(
-          '[data-ludorum-product-id="' +
-          String(productId) +
-          '"]'
-        )
-        .forEach((button) => {
-          setLudoMatchButtonBusy(
-            button,
-            false
-          );
-
-          button.textContent =
-            'Réessayer';
-
-          button.title =
-            message ||
-            'Ajout impossible.';
-
-          setTimeout(() => {
-            if (!button.isConnected) {
-              return;
-            }
-
-            button.textContent =
-              button.dataset
-                .ludorumOriginalText ||
-              'Ajouter au panier';
-          }, 1300);
-        });
-
-      removeWooViewCartLinks();
+      finishLudoMatchButtons(
+        (button) =>
+          parseInt(
+            button.dataset.productId || '0',
+            10
+          ) === productId,
+        'error',
+        1400,
+        message ||
+        'Ajout impossible.'
+      );
     };
 
   window.__ludorumMatchCartSuccess =
     function(slug) {
-      document
-        .querySelectorAll(
-          '[data-ludorum-slug="' +
-          CSS.escape(slug) +
-          '"]'
-        )
-        .forEach((button) => {
-          setLudoMatchButtonBusy(
-            button,
-            false
-          );
-
-          button.textContent =
-            '✓ Ajouté';
-
-          setTimeout(() => {
-            if (!button.isConnected) {
-              return;
-            }
-
-            button.textContent =
-              button.dataset
-                .ludorumOriginalText ||
-              'Ajouter au panier';
-          }, 900);
-        });
-
-      removeWooViewCartLinks();
+      finishLudoMatchButtons(
+        (button) =>
+          button.dataset.slug === slug,
+        'success',
+        900,
+        ''
+      );
     };
 
   window.__ludorumMatchCartError =
     function(slug, message) {
-      document
-        .querySelectorAll(
-          '[data-ludorum-slug="' +
-          CSS.escape(slug) +
-          '"]'
-        )
-        .forEach((button) => {
-          setLudoMatchButtonBusy(
-            button,
-            false
-          );
-
-          button.textContent =
-            'Réessayer';
-
-          button.title =
-            message ||
-            'Ajout impossible.';
-
-          setTimeout(() => {
-            if (!button.isConnected) {
-              return;
-            }
-
-            button.textContent =
-              button.dataset
-                .ludorumOriginalText ||
-              'Ajouter au panier';
-          }, 1300);
-        });
-
-      removeWooViewCartLinks();
+      finishLudoMatchButtons(
+        (button) =>
+          button.dataset.slug === slug,
+        'error',
+        1400,
+        message ||
+        'Ajout impossible.'
+      );
     };
 
   function run() {
@@ -1964,7 +1979,7 @@
     cleanAccountCopy();
     accountTabs();
     buildSocialDock();
-    wireLudoMatchCartControls();
+    rebuildLudoMatchNativeActions();
   }
 
   window.__ludorumRun = run;
