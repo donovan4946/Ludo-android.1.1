@@ -276,7 +276,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.3"
+                " LudorumAndroid/1.1.4"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1175,6 +1175,72 @@ public class WebActivity extends Activity {
     }
 
     private final class AppBridge {
+        @JavascriptInterface
+        public void addProductIdToCart(
+                int productId
+        ) {
+            if (productId <= 0) {
+                return;
+            }
+
+            try {
+                CartService.addOne(
+                        productId,
+                        new CartService.Callback() {
+                            @Override
+                            public void onSuccess(
+                                    CartService.CartSnapshot snapshot
+                            ) {
+                                try {
+                                    if (cartTicker != null) {
+                                        cartTicker.applySnapshot(
+                                                snapshot
+                                        );
+                                    }
+
+                                    if (web != null) {
+                                        web.evaluateJavascript(
+                                                "window.__ludorumMatchCartSuccessId && " +
+                                                "window.__ludorumMatchCartSuccessId(" +
+                                                productId +
+                                                ");",
+                                                null
+                                        );
+                                    }
+                                } catch (Throwable ignored) {}
+                            }
+
+                            @Override
+                            public void onError(
+                                    String message
+                            ) {
+                                try {
+                                    final String safeMessage =
+                                            JSONObject.quote(
+                                                    message == null ||
+                                                    message.trim().isEmpty()
+                                                            ? "Ajout impossible."
+                                                            : message
+                                            );
+
+                                    if (web != null) {
+                                        web.evaluateJavascript(
+                                                "window.__ludorumMatchCartErrorId && " +
+                                                "window.__ludorumMatchCartErrorId(" +
+                                                productId +
+                                                "," +
+                                                safeMessage +
+                                                ");",
+                                                null
+                                        );
+                                    }
+                                } catch (Throwable ignored) {}
+                            }
+                        }
+                );
+            } catch (Throwable ignored) {}
+        }
+
         @JavascriptInterface
         public void addProductSlugToCart(
                 String slug
