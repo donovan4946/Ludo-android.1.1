@@ -3068,18 +3068,15 @@ public class MainActivity extends Activity {
                         Ui.BLUE
                 );
 
-        boolean canEdit =
-                item.editable;
-
+        // Les contrôles natifs Ludorum restent utilisables.
+        // WooCommerce reste l'arbitre final des limites autorisées.
         boolean canDecrease =
-                canEdit &&
                 item.quantity > 0;
 
         boolean canIncrease =
-                canEdit &&
-                (item.maximum <= 0 ||
-                 item.quantity <
-                 item.maximum);
+                item.maximum <= 0 ||
+                item.quantity <
+                item.maximum;
 
         minus.setEnabled(
                 canDecrease

@@ -1068,7 +1068,7 @@ final class CartService {
 
             connection.setRequestProperty(
                     "User-Agent",
-                    "LudorumAndroid/1.1.2"
+                    "LudorumAndroid/1.1.3"
             );
 
             if (session.cookies != null &&
@@ -1292,6 +1292,10 @@ final class CartService {
                                         "maximum",
                                         9999
                                 );
+
+                if (maximum <= 0) {
+                    maximum = 9999;
+                }
 
                 int multiple =
                         limits == null

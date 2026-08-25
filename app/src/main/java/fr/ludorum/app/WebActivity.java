@@ -24,6 +24,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -274,7 +276,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.2"
+                " LudorumAndroid/1.1.3"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1104,7 +1106,186 @@ public class WebActivity extends Activity {
         return true;
     }
 
+    private void sendLudoMatchCartSuccess(
+            String slug
+    ) {
+        try {
+            final String safeSlug =
+                    JSONObject.quote(
+                            slug == null
+                                    ? ""
+                                    : slug
+                    );
+
+            runOnUiThread(
+                    () -> {
+                        try {
+                            if (web != null) {
+                                web.evaluateJavascript(
+                                        "window.__ludorumMatchCartSuccess && " +
+                                        "window.__ludorumMatchCartSuccess(" +
+                                        safeSlug +
+                                        ");",
+                                        null
+                                );
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+            );
+        } catch (Throwable ignored) {}
+    }
+
+    private void sendLudoMatchCartError(
+            String slug,
+            String message
+    ) {
+        try {
+            final String safeSlug =
+                    JSONObject.quote(
+                            slug == null
+                                    ? ""
+                                    : slug
+                    );
+
+            final String safeMessage =
+                    JSONObject.quote(
+                            message == null
+                                    ? "Ajout impossible."
+                                    : message
+                    );
+
+            runOnUiThread(
+                    () -> {
+                        try {
+                            if (web != null) {
+                                web.evaluateJavascript(
+                                        "window.__ludorumMatchCartError && " +
+                                        "window.__ludorumMatchCartError(" +
+                                        safeSlug +
+                                        "," +
+                                        safeMessage +
+                                        ");",
+                                        null
+                                );
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+            );
+        } catch (Throwable ignored) {}
+    }
+
     private final class AppBridge {
+        @JavascriptInterface
+        public void addProductSlugToCart(
+                String slug
+        ) {
+            if (slug == null ||
+                    slug.trim().isEmpty()) {
+                return;
+            }
+
+            final String safeSlug =
+                    slug.trim();
+
+            try {
+                ApiClient.getProductBySlug(
+                        safeSlug,
+                        new ApiClient.Callback<Product>() {
+                            @Override
+                            public void onSuccess(
+                                    Product product
+                            ) {
+                                if (product == null ||
+                                        product.id <= 0) {
+                                    sendLudoMatchCartError(
+                                            safeSlug,
+                                            "Produit introuvable."
+                                    );
+                                    return;
+                                }
+
+                                if (!product.inStock ||
+                                        !product.purchasable) {
+                                    sendLudoMatchCartError(
+                                            safeSlug,
+                                            "Produit indisponible."
+                                    );
+                                    return;
+                                }
+
+                                if (!"simple".equalsIgnoreCase(
+                                        product.type
+                                )) {
+                                    runOnUiThread(
+                                            () -> openNativeScreen(
+                                                    "product",
+                                                    product.slug,
+                                                    null
+                                            )
+                                    );
+                                    return;
+                                }
+
+                                CartService.addOne(
+                                        product.id,
+                                        new CartService.Callback() {
+                                            @Override
+                                            public void onSuccess(
+                                                    CartService.CartSnapshot snapshot
+                                            ) {
+                                                runOnUiThread(
+                                                        () -> {
+                                                            try {
+                                                                if (cartTicker != null) {
+                                                                    cartTicker.applySnapshot(
+                                                                            snapshot
+                                                                    );
+                                                                }
+
+                                                                sendLudoMatchCartSuccess(
+                                                                        safeSlug
+                                                                );
+                                                            } catch (Throwable ignored) {}
+                                                        }
+                                                );
+                                            }
+
+                                            @Override
+                                            public void onError(
+                                                    String message
+                                            ) {
+                                                sendLudoMatchCartError(
+                                                        safeSlug,
+                                                        message == null ||
+                                                        message.trim().isEmpty()
+                                                                ? "Ajout impossible."
+                                                                : message
+                                                );
+                                            }
+                                        }
+                                );
+                            }
+
+                            @Override
+                            public void onError(
+                                    Exception error
+                            ) {
+                                sendLudoMatchCartError(
+                                        safeSlug,
+                                        "Produit introuvable."
+                                );
+                            }
+                        }
+                );
+
+            } catch (Throwable ignored) {
+                sendLudoMatchCartError(
+                        safeSlug,
+                        "Ajout impossible."
+                );
+            }
+        }
+
         @JavascriptInterface
         public void cartChanged() {
             try {
