@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lud_navy">#071A33</color>
+    <color name="lud_blue">#0B4DBB</color>
+    <color name="lud_red">#CF1F1F</color>
+    <color name="lud_yellow">#F2A900</color>
+    <color name="lud_ivory">#FFFAF0</color>
+    <color name="white">#FFFFFF</color>
+</resources>
