@@ -1381,6 +1381,85 @@
     );
   }
 
+  function removeDuplicateLudoMatchViewProductCtas() {
+    if (!isLudoMatchPage()) {
+      return;
+    }
+
+    document
+      .querySelectorAll(
+        'a,button'
+      )
+      .forEach((element) => {
+        if (
+          element.classList &&
+          element.classList.contains(
+            'ludorum-match-view-product'
+          )
+        ) {
+          return;
+        }
+
+        if (
+          element.closest &&
+          element.closest(
+            '.ludorum-match-actions'
+          )
+        ) {
+          return;
+        }
+
+        const label =
+          String(
+            element.textContent || ''
+          )
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+        if (
+          label !== 'voir le produit' &&
+          label !== 'view product'
+        ) {
+          return;
+        }
+
+        const card =
+          ludoMatchCard(
+            element
+          );
+
+        if (
+          !card ||
+          !card.querySelector(
+            '.ludorum-match-actions'
+          )
+        ) {
+          return;
+        }
+
+        element.classList.add(
+          'ludorum-match-old-view-product'
+        );
+
+        element.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
+        element.setAttribute(
+          'tabindex',
+          '-1'
+        );
+
+        element.style.setProperty(
+          'display',
+          'none',
+          'important'
+        );
+      });
+  }
+
   function removeWooViewCartLinks() {
     if (!isLudoMatchPage()) return;
 
@@ -1468,7 +1547,8 @@
         overflow: hidden !important;
       }
 
-      body .ludorum-match-original-woo-add {
+      body .ludorum-match-original-woo-add,
+      body .ludorum-match-old-view-product {
         display: none !important;
         visibility: hidden !important;
         pointer-events: none !important;
@@ -1823,6 +1903,7 @@
       });
 
     removeWooViewCartLinks();
+    removeDuplicateLudoMatchViewProductCtas();
   }
 
   if (
@@ -1920,6 +2001,7 @@
       });
 
     removeWooViewCartLinks();
+    removeDuplicateLudoMatchViewProductCtas();
   }
 
   window.__ludorumMatchCartSuccessId =

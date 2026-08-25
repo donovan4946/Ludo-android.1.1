@@ -558,7 +558,7 @@ final class ApiClient {
         connection.setUseCaches(true);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Connection", "keep-alive");
-        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.5");
+        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.6");
         connection.setInstanceFollowRedirects(true);
         return connection;
     }
