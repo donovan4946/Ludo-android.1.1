@@ -313,6 +313,23 @@ final class CartService {
         }
     }
 
+    static CartSnapshot getCachedSnapshot() {
+        return lastSnapshot;
+    }
+
+    static boolean hasFreshCachedSnapshot() {
+        CartSnapshot snapshot =
+                lastSnapshot;
+
+        if (snapshot == null) {
+            return false;
+        }
+
+        return System.currentTimeMillis() -
+                lastSnapshotAt <=
+                5000L;
+    }
+
     static void getCart(
             Callback callback
     ) {
@@ -1013,7 +1030,7 @@ final class CartService {
 
             connection.setRequestProperty(
                     "User-Agent",
-                    "LudorumAndroid/1.1.0"
+                    "LudorumAndroid/1.1.1"
             );
 
             if (session.cookies != null &&

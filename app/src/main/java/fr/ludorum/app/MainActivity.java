@@ -2332,36 +2332,51 @@ public class MainActivity extends Activity {
                 subtitleParams
         );
 
-        ProgressBar progress =
-                new ProgressBar(
-                        this
-                );
+        CartService.CartSnapshot cached =
+                currentCartSnapshot;
 
-        LinearLayout.LayoutParams progressParams =
-                new LinearLayout.LayoutParams(
-                        Ui.dp(
-                                this,
-                                42
-                        ),
-                        Ui.dp(
-                                this,
-                                42
-                        )
-                );
+        if (cached == null) {
+            cached =
+                    CartService.getCachedSnapshot();
+        }
 
-        progressParams.gravity =
-                Gravity.CENTER_HORIZONTAL;
+        if (cached != null) {
+            renderCart(
+                    cached,
+                    null
+            );
+        } else {
+            ProgressBar progress =
+                    new ProgressBar(
+                            this
+                    );
 
-        progressParams.topMargin =
-                Ui.dp(
-                        this,
-                        22
-                );
+            LinearLayout.LayoutParams progressParams =
+                    new LinearLayout.LayoutParams(
+                            Ui.dp(
+                                    this,
+                                    42
+                            ),
+                            Ui.dp(
+                                    this,
+                                    42
+                            )
+                    );
 
-        content.addView(
-                progress,
-                progressParams
-        );
+            progressParams.gravity =
+                    Gravity.CENTER_HORIZONTAL;
+
+            progressParams.topMargin =
+                    Ui.dp(
+                            this,
+                            22
+                    );
+
+            content.addView(
+                    progress,
+                    progressParams
+            );
+        }
 
         CartService.getCart(
                 new CartService.Callback() {
@@ -2374,6 +2389,9 @@ public class MainActivity extends Activity {
                                 !cartMode) {
                             return;
                         }
+
+                        currentCartSnapshot =
+                                snapshot;
 
                         renderCart(
                                 snapshot,
@@ -2388,6 +2406,17 @@ public class MainActivity extends Activity {
                         if (generation !=
                                 screenGeneration ||
                                 !cartMode) {
+                            return;
+                        }
+
+                        // Si on avait déjà un snapshot confirmé par l'ajout,
+                        // on le conserve à l'écran plutôt que d'afficher
+                        // à tort "panier vide".
+                        if (currentCartSnapshot != null) {
+                            renderCart(
+                                    currentCartSnapshot,
+                                    "Synchronisation momentanément indisponible."
+                            );
                             return;
                         }
 
@@ -3272,6 +3301,9 @@ public class MainActivity extends Activity {
                             return;
                         }
 
+                        currentCartSnapshot =
+                                snapshot;
+
                         renderCart(
                                 snapshot,
                                 null
@@ -3886,6 +3918,9 @@ public class MainActivity extends Activity {
                                         800
                                 );
                             }
+
+                            currentCartSnapshot =
+                                    snapshot;
 
                             if (cartTicker != null) {
                                 cartTicker.applySnapshot(
