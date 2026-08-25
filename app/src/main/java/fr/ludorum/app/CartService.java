@@ -56,6 +56,18 @@ final class CartService {
     private static volatile CartSnapshot lastSnapshot;
     private static volatile long lastSnapshotAt = 0L;
 
+    // Identité du panier headless WooCommerce.
+    // Important : elle doit survivre entre l'ajout et la lecture suivante.
+    private static volatile String persistentCartToken = "";
+
+    // Snapshot issu d'une vraie mutation confirmée (ajout / quantité / retrait).
+    // Une simple lecture ne doit pas pouvoir le faire régresser immédiatement.
+    private static volatile CartSnapshot lastMutationSnapshot;
+    private static volatile long lastMutationAt = 0L;
+
+    private static final long MUTATION_PRIORITY_MS =
+            8000L;
+
     interface Callback {
         void onSuccess(
                 CartSnapshot snapshot
@@ -261,7 +273,8 @@ final class CartService {
 
         Session(
                 CookieManager cookieManager,
-                String cookies
+                String cookies,
+                String initialCartToken
         ) {
             this.cookieManager =
                     cookieManager;
@@ -270,6 +283,11 @@ final class CartService {
                     cookies == null
                             ? ""
                             : cookies;
+
+            this.cartToken =
+                    initialCartToken == null
+                            ? ""
+                            : initialCartToken.trim();
         }
 
         void absorb(
@@ -292,6 +310,9 @@ final class CartService {
                     !token.trim().isEmpty()) {
                 cartToken =
                         token.trim();
+
+                persistentCartToken =
+                        cartToken;
             }
 
             List<String> incoming =
@@ -338,7 +359,8 @@ final class CartService {
                 session ->
                         fetchCart(
                                 session
-                        )
+                        ),
+                false
         );
     }
 
@@ -448,7 +470,8 @@ final class CartService {
                     }
 
                     return after;
-                }
+                },
+                true
         );
     }
 
@@ -510,7 +533,8 @@ final class CartService {
                             item.key,
                             target
                     );
-                }
+                },
+                true
         );
     }
 
@@ -546,7 +570,8 @@ final class CartService {
                             session,
                             itemKey
                     );
-                }
+                },
+                true
         );
     }
 
@@ -607,7 +632,8 @@ final class CartService {
 
     private static void run(
             Callback callback,
-            Operation operation
+            Operation operation,
+            boolean mutation
     ) {
         final Session session;
 
@@ -620,7 +646,8 @@ final class CartService {
                             manager,
                             manager.getCookie(
                                     BASE
-                            )
+                            ),
+                            persistentCartToken
                     );
 
         } catch (Throwable error) {
@@ -640,9 +667,19 @@ final class CartService {
                                         session
                                 );
 
+                        CartSnapshot delivered =
+                                protectFreshMutationFromReadRegression(
+                                        result,
+                                        mutation
+                                );
+
                         remember(
-                                result
+                                delivered,
+                                mutation
                         );
+
+                        final CartSnapshot finalDelivered =
+                                delivered;
 
                         MAIN.post(
                                 () -> {
@@ -651,7 +688,7 @@ final class CartService {
                                     );
 
                                     callback.onSuccess(
-                                            result
+                                            finalDelivered
                                     );
                                 }
                         );
@@ -977,7 +1014,8 @@ final class CartService {
             }
 
             remember(
-                    current
+                    current,
+                    true
             );
 
         } catch (Exception ignored) {}
@@ -1030,7 +1068,7 @@ final class CartService {
 
             connection.setRequestProperty(
                     "User-Agent",
-                    "LudorumAndroid/1.1.1"
+                    "LudorumAndroid/1.1.2"
             );
 
             if (session.cookies != null &&
@@ -1041,6 +1079,16 @@ final class CartService {
                 );
             }
 
+            // Le même Cart-Token doit identifier le même panier
+            // sur les LECTURES comme sur les ÉCRITURES.
+            if (session.cartToken != null &&
+                    !session.cartToken.trim().isEmpty()) {
+                connection.setRequestProperty(
+                        "Cart-Token",
+                        session.cartToken
+                );
+            }
+
             if (!"GET".equals(method)) {
                 if (session.cartToken == null ||
                         session.cartToken.trim().isEmpty()) {
@@ -1048,11 +1096,6 @@ final class CartService {
                             "Token panier manquant."
                     );
                 }
-
-                connection.setRequestProperty(
-                        "Cart-Token",
-                        session.cartToken
-                );
 
                 connection.setDoOutput(
                         true
@@ -1468,18 +1511,66 @@ final class CartService {
         );
     }
 
+    private static CartSnapshot protectFreshMutationFromReadRegression(
+            CartSnapshot candidate,
+            boolean mutation
+    ) {
+        if (candidate == null ||
+                mutation) {
+            return candidate;
+        }
+
+        CartSnapshot protectedSnapshot =
+                lastMutationSnapshot;
+
+        if (protectedSnapshot == null) {
+            return candidate;
+        }
+
+        long age =
+                System.currentTimeMillis() -
+                lastMutationAt;
+
+        if (age < 0L ||
+                age > MUTATION_PRIORITY_MS) {
+            return candidate;
+        }
+
+        // Sans nouvelle action utilisateur, une lecture 100 ms après
+        // un ajout confirmé n'a aucune raison de perdre des articles.
+        // C'est le symptôme typique d'une mauvaise identité panier.
+        if (candidate.itemsCount <
+                protectedSnapshot.itemsCount) {
+            return protectedSnapshot;
+        }
+
+        return candidate;
+    }
+
     private static void remember(
-            CartSnapshot snapshot
+            CartSnapshot snapshot,
+            boolean mutation
     ) {
         if (snapshot == null) {
             return;
         }
 
+        long now =
+                System.currentTimeMillis();
+
         lastSnapshot =
                 snapshot;
 
         lastSnapshotAt =
-                System.currentTimeMillis();
+                now;
+
+        if (mutation) {
+            lastMutationSnapshot =
+                    snapshot;
+
+            lastMutationAt =
+                    now;
+        }
     }
 
     private static void syncCookies(

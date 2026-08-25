@@ -2390,6 +2390,24 @@ public class MainActivity extends Activity {
                             return;
                         }
 
+                        CartService.CartSnapshot visible =
+                                currentCartSnapshot;
+
+                        // CartService protège déjà la priorité de session.
+                        // Cette garde UI empêche aussi un état serveur régressif
+                        // de faire clignoter puis disparaître un produit confirmé.
+                        if (visible != null &&
+                                visible.itemsCount > 0 &&
+                                snapshot.itemsCount <
+                                visible.itemsCount &&
+                                CartService.hasFreshCachedSnapshot()) {
+                            renderCart(
+                                    visible,
+                                    null
+                            );
+                            return;
+                        }
+
                         currentCartSnapshot =
                                 snapshot;
 
