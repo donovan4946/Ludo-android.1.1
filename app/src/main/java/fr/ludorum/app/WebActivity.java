@@ -37,6 +37,7 @@ import java.io.ByteArrayInputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public class WebActivity extends Activity {
     static final String EXTRA_URL = "url";
@@ -404,7 +405,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.15"
+                " LudorumAndroid/1.1.16"
         );
 
         CookieManager cookies = CookieManager.getInstance();
