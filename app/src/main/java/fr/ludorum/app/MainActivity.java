@@ -3182,7 +3182,7 @@ public class MainActivity extends Activity {
         );
 
         removeOne.setContentDescription(
-                "Retirer un exemplaire"
+                "Supprimer le produit du panier"
         );
 
         removeOne.setBackground(
@@ -3205,9 +3205,8 @@ public class MainActivity extends Activity {
 
         removeOne.setOnClickListener(
                 view ->
-                        mutateCartItem(
-                                item,
-                                item.quantity - 1
+                        removeCartLine(
+                                item
                         )
         );
 
@@ -3289,6 +3288,59 @@ public class MainActivity extends Activity {
         );
 
         return view;
+    }
+
+    private void removeCartLine(
+            CartService.CartItem item
+    ) {
+        if (!cartMode ||
+                item == null ||
+                cartMutationInFlight) {
+            return;
+        }
+
+        cartMutationInFlight = true;
+
+        CartService.removeItem(
+                item.key,
+                new CartService.Callback() {
+                    @Override
+                    public void onSuccess(
+                            CartService.CartSnapshot snapshot
+                    ) {
+                        if (!cartMode) {
+                            cartMutationInFlight = false;
+                            return;
+                        }
+
+                        currentCartSnapshot = snapshot;
+
+                        renderCart(
+                                snapshot,
+                                null
+                        );
+                    }
+
+                    @Override
+                    public void onError(
+                            String message
+                    ) {
+                        cartMutationInFlight = false;
+
+                        if (!cartMode) {
+                            return;
+                        }
+
+                        renderCart(
+                                currentCartSnapshot,
+                                message == null ||
+                                message.trim().isEmpty()
+                                        ? "Suppression du produit impossible."
+                                        : message
+                        );
+                    }
+                }
+        );
     }
 
     private void mutateCartItem(
