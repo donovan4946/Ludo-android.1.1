@@ -5,11 +5,15 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -19,9 +23,11 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import org.json.JSONObject;
@@ -54,11 +60,6 @@ public class WebActivity extends Activity {
 
     private long lastPolishAt = 0L;
     private String lastPolishUrl = "";
-
-    private LinearLayout navHome;
-    private LinearLayout navAccount;
-    private LinearLayout navFavorites;
-    private LinearLayout navCart;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -131,37 +132,56 @@ public class WebActivity extends Activity {
                 0,
                 Ui.topSystemSpace(this),
                 0,
-                0
+                Ui.bottomSystemSpace(this)
         );
 
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout top =
+                new LinearLayout(this);
+        top.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+        top.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
         top.setPadding(
                 Ui.dp(this, 8),
-                Ui.dp(this, 6),
-                Ui.dp(this, 10),
-                Ui.dp(this, 6)
+                Ui.dp(this, 4),
+                Ui.dp(this, 8),
+                Ui.dp(this, 4)
         );
-        top.setBackgroundColor(Color.WHITE);
-        top.setElevation(Ui.dp(this, 3));
+        top.setBackgroundColor(
+                Color.WHITE
+        );
+        top.setElevation(
+                Ui.dp(this, 3)
+        );
 
-        ImageView back = new ImageView(this);
-        back.setImageResource(R.drawable.ic_back);
-        back.setColorFilter(Ui.NAVY);
-        back.setPadding(
-                Ui.dp(this, 8),
-                Ui.dp(this, 8),
-                Ui.dp(this, 8),
-                Ui.dp(this, 8)
+        ImageView menuButton =
+                new ImageView(this);
+        menuButton.setImageResource(
+                R.drawable.ic_menu
         );
-        back.setOnClickListener(view -> onBackPressed());
+        menuButton.setColorFilter(
+                Ui.BLUE
+        );
+        menuButton.setPadding(
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9)
+        );
+        menuButton.setContentDescription(
+                "Ouvrir le menu"
+        );
+        menuButton.setOnClickListener(
+                this::openTopMenu
+        );
 
         top.addView(
-                back,
+                menuButton,
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 46),
-                        Ui.dp(this, 46)
+                        Ui.dp(this, 42),
+                        Ui.dp(this, 42)
                 )
         );
 
@@ -169,30 +189,116 @@ public class WebActivity extends Activity {
                 Ui.text(
                         this,
                         "Ludorum",
-                        17,
-                        Ui.NAVY,
-                        true
+                        1,
+                        Color.TRANSPARENT,
+                        false
                 );
-        title.setGravity(Gravity.CENTER_VERTICAL);
+
+        FrameLayout logoHost =
+                new FrameLayout(this);
+
+        ImageView logo =
+                new ImageView(this);
+        logo.setImageResource(
+                R.drawable.ludorum_logo
+        );
+        logo.setScaleType(
+                ImageView.ScaleType.CENTER_INSIDE
+        );
+
+        FrameLayout.LayoutParams logoParams =
+                new FrameLayout.LayoutParams(
+                        Ui.dp(this, 112),
+                        Ui.dp(this, 34),
+                        Gravity.CENTER
+                );
+        logoHost.addView(
+                logo,
+                logoParams
+        );
+        logoHost.setClickable(true);
+        logoHost.setFocusable(true);
+        logoHost.setContentDescription(
+                "Retour à l'accueil"
+        );
+        logoHost.setOnClickListener(
+                view ->
+                        openNativeScreen(
+                                "home",
+                                null,
+                                null
+                        )
+        );
 
         top.addView(
-                title,
+                logoHost,
                 new LinearLayout.LayoutParams(
                         0,
-                        Ui.dp(this, 46),
+                        Ui.dp(this, 42),
                         1f
                 )
         );
 
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ludorum_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        ImageView searchButton =
+                new ImageView(this);
+        searchButton.setImageResource(
+                R.drawable.ic_search
+        );
+        searchButton.setColorFilter(
+                Ui.BLUE
+        );
+        searchButton.setPadding(
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9)
+        );
+        searchButton.setContentDescription(
+                "Rechercher"
+        );
+        searchButton.setOnClickListener(
+                this::openTopSearch
+        );
 
         top.addView(
-                logo,
+                searchButton,
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 96),
-                        Ui.dp(this, 32)
+                        Ui.dp(this, 42),
+                        Ui.dp(this, 42)
+                )
+        );
+
+        ImageView cartButton =
+                new ImageView(this);
+        cartButton.setImageResource(
+                R.drawable.ic_cart
+        );
+        cartButton.setColorFilter(
+                Ui.BLUE
+        );
+        cartButton.setPadding(
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9)
+        );
+        cartButton.setContentDescription(
+                "Ouvrir le panier"
+        );
+        cartButton.setOnClickListener(
+                view ->
+                        openNativeScreen(
+                                "cart",
+                                null,
+                                null
+                        )
+        );
+
+        top.addView(
+                cartButton,
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 42),
+                        Ui.dp(this, 42)
                 )
         );
 
@@ -276,7 +382,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.10"
+                " LudorumAndroid/1.1.13"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -305,182 +411,375 @@ public class WebActivity extends Activity {
                 )
         );
 
-        View bottomHost = bottomNavHost();
-
-        root.addView(
-                bottomHost,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 70) +
-                        Ui.bottomSystemSpace(this)
-                )
-        );
-
         setContentView(root);
     }
 
-    private View bottomNavHost() {
-        FrameLayout host =
-                new FrameLayout(this);
-
-        host.setBackgroundColor(
-                Ui.NAVY
+    private void openTopMenu(
+            View anchor
+    ) {
+        LinearLayout panel =
+                new LinearLayout(this);
+        panel.setOrientation(
+                LinearLayout.VERTICAL
         );
-
-        LinearLayout stripe =
-                Ui.brandStripe(this);
-
-        FrameLayout.LayoutParams stripeParams =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 4),
-                        Gravity.TOP
-                );
-
-        host.addView(
-                stripe,
-                stripeParams
+        panel.setPadding(
+                Ui.dp(this, 12),
+                Ui.dp(this, 12),
+                Ui.dp(this, 12),
+                Ui.dp(this, 12)
         );
-
-        View nav =
-                bottomNav();
-
-        FrameLayout.LayoutParams navParams =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 66),
-                        Gravity.TOP
-                );
-
-        navParams.topMargin =
-                Ui.dp(this, 4);
-
-        host.addView(
-                nav,
-                navParams
-        );
-
-        return host;
-    }
-
-    private View bottomNav() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setPadding(
-                Ui.dp(this, 7),
-                Ui.dp(this, 5),
-                Ui.dp(this, 7),
-                Ui.dp(this, 5)
-        );
-        bar.setBackground(
-                Ui.gradient(
+        panel.setBackground(
+                Ui.roundedStroke(
                         Color.WHITE,
-                        Ui.SOFT,
-                        0,
+                        Ui.BORDER,
+                        1,
+                        18,
                         this
                 )
         );
-        bar.setElevation(
-                Ui.dp(this, 14)
+
+        TextView heading =
+                Ui.text(
+                        this,
+                        "Menu",
+                        17,
+                        Ui.NAVY,
+                        true
+                );
+        LinearLayout.LayoutParams headingParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        headingParams.bottomMargin =
+                Ui.dp(this, 9);
+        panel.addView(
+                heading,
+                headingParams
         );
 
-        navHome =
-                Ui.navItem(
-                        this,
-                        R.drawable.ic_home,
-                        "Accueil",
-                        false
+        int popupWidth =
+                Math.min(
+                        getResources()
+                                .getDisplayMetrics()
+                                .widthPixels -
+                        Ui.dp(this, 30),
+                        Ui.dp(this, 286)
                 );
-        navAccount =
-                Ui.navItem(
-                        this,
-                        R.drawable.ic_person,
-                        "Compte",
-                        false
+
+        PopupWindow popup =
+                new PopupWindow(
+                        panel,
+                        popupWidth,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true
                 );
-        navFavorites =
-                Ui.navItem(
-                        this,
-                        R.drawable.ic_heart,
+        popup.setBackgroundDrawable(
+                new ColorDrawable(
+                        Color.TRANSPARENT
+                )
+        );
+        popup.setOutsideTouchable(true);
+        popup.setElevation(
+                Ui.dp(this, 12)
+        );
+
+        TextView account =
+                topMenuItem(
+                        "Mon compte",
+                        Ui.YELLOW
+                );
+        account.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    if (isCurrentLudorumPath(
+                            "/mon-compte"
+                    )) {
+                        web.scrollTo(0, 0);
+                    } else {
+                        web.stopLoading();
+                        cartMode = false;
+                        accountMode = true;
+                        title.setText(
+                                "Mon compte"
+                        );
+                        progress.setProgress(0);
+                        progress.setVisibility(
+                                View.VISIBLE
+                        );
+                        web.loadUrl(
+                                ACCOUNT
+                        );
+                    }
+                }
+        );
+        panel.addView(
+                account,
+                topMenuItemParams()
+        );
+
+        TextView favorites =
+                topMenuItem(
                         "Favoris",
-                        false
+                        Ui.RED
                 );
-        navCart =
-                Ui.navItem(
+        favorites.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "favorites",
+                            null,
+                            null
+                    );
+                }
+        );
+        panel.addView(
+                favorites,
+                topMenuItemParams()
+        );
+
+        TextView shop =
+                topMenuItem(
+                        "Boutique",
+                        Ui.BLUE
+                );
+        shop.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "shop",
+                            null,
+                            null
+                    );
+                }
+        );
+        panel.addView(
+                shop,
+                topMenuItemParams()
+        );
+
+        popup.showAsDropDown(
+                anchor,
+                0,
+                Ui.dp(this, 3)
+        );
+    }
+
+    private TextView topMenuItem(
+            String label,
+            int accent
+    ) {
+        int textColor =
+                accent == Ui.YELLOW
+                        ? Ui.NAVY
+                        : accent;
+
+        TextView item =
+                Ui.text(
                         this,
-                        R.drawable.ic_cart,
-                        "Panier",
-                        false
+                        label,
+                        15,
+                        textColor,
+                        true
                 );
-
-        navHome.setOnClickListener(view -> {
-            openNativeScreen(
-                    "home",
-                    null,
-                    null
-            );
-        });
-
-        navAccount.setOnClickListener(view -> {
-            if (isCurrentLudorumPath(
-                    "/mon-compte"
-            )) {
-                web.scrollTo(
+        item.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+        item.setPadding(
+                Ui.dp(this, 13),
+                0,
+                Ui.dp(this, 13),
+                0
+        );
+        item.setBackground(
+                Ui.roundedStroke(
+                        Ui.softAccent(accent),
+                        Color.TRANSPARENT,
                         0,
-                        0
+                        13,
+                        this
+                )
+        );
+        return item;
+    }
+
+    private LinearLayout.LayoutParams topMenuItemParams() {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
+                );
+        params.bottomMargin =
+                Ui.dp(this, 7);
+        return params;
+    }
+
+    private void openTopSearch(
+            View anchor
+    ) {
+        LinearLayout panel =
+                new LinearLayout(this);
+        panel.setOrientation(
+                LinearLayout.VERTICAL
+        );
+        panel.setPadding(
+                Ui.dp(this, 13),
+                Ui.dp(this, 12),
+                Ui.dp(this, 13),
+                Ui.dp(this, 13)
+        );
+        panel.setBackground(
+                Ui.roundedStroke(
+                        Color.WHITE,
+                        Ui.BORDER,
+                        1,
+                        18,
+                        this
+                )
+        );
+
+        EditText field =
+                new EditText(this);
+        field.setSingleLine(true);
+        field.setHint(
+                "Jeu, carte, accessoire…"
+        );
+        field.setTextSize(15);
+        field.setTextColor(
+                Ui.TEXT
+        );
+        field.setHintTextColor(
+                Color.rgb(
+                        145,
+                        154,
+                        166
+                )
+        );
+        field.setInputType(
+                InputType.TYPE_CLASS_TEXT
+        );
+        field.setImeOptions(
+                EditorInfo.IME_ACTION_SEARCH
+        );
+        field.setPadding(
+                Ui.dp(this, 12),
+                0,
+                Ui.dp(this, 12),
+                0
+        );
+        field.setBackground(
+                Ui.roundedStroke(
+                        Ui.SOFT,
+                        Ui.BORDER,
+                        1,
+                        22,
+                        this
+                )
+        );
+
+        panel.addView(
+                field,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 46)
+                )
+        );
+
+        TextView action =
+                Ui.pill(
+                        this,
+                        "Rechercher",
+                        Color.WHITE,
+                        Ui.BLUE,
+                        Ui.BLUE
                 );
 
-                updateBottomNav(
-                        web.getUrl()
+        LinearLayout.LayoutParams actionParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
                 );
-                return;
-            }
+        actionParams.topMargin =
+                Ui.dp(this, 9);
 
-            web.stopLoading();
-            cartMode = false;
-            accountMode = true;
-            title.setText("Mon compte");
-            progress.setProgress(0);
-            progress.setVisibility(View.VISIBLE);
-            web.loadUrl(ACCOUNT);
-        });
+        panel.addView(
+                action,
+                actionParams
+        );
 
-        navFavorites.setOnClickListener(view -> {
-            openNativeScreen(
-                    "favorites",
-                    null,
-                    null
-            );
-        });
+        int popupWidth =
+                Math.min(
+                        getResources()
+                                .getDisplayMetrics()
+                                .widthPixels -
+                        Ui.dp(this, 28),
+                        Ui.dp(this, 350)
+                );
 
-        navCart.setOnClickListener(view -> {
-            openNativeScreen(
-                    "cart",
-                    null,
-                    null
-            );
-        });
+        PopupWindow popup =
+                new PopupWindow(
+                        panel,
+                        popupWidth,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true
+                );
+        popup.setBackgroundDrawable(
+                new ColorDrawable(
+                        Color.TRANSPARENT
+                )
+        );
+        popup.setOutsideTouchable(true);
+        popup.setElevation(
+                Ui.dp(this, 12)
+        );
 
-        LinearLayout[] items =
-                new LinearLayout[]{
-                        navHome,
-                        navAccount,
-                        navFavorites,
-                        navCart
+        Runnable submit =
+                () -> {
+                    String query =
+                            field.getText()
+                                    .toString()
+                                    .trim();
+                    if (query.isEmpty()) {
+                        return;
+                    }
+
+                    popup.dismiss();
+                    openNativeScreen(
+                            "search",
+                            "search_query",
+                            query
+                    );
                 };
 
-        for (LinearLayout item : items) {
-            bar.addView(
-                    item,
-                    new LinearLayout.LayoutParams(
-                            0,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            1f
-                    )
-            );
-        }
+        action.setOnClickListener(
+                view -> submit.run()
+        );
 
-        return bar;
+        field.setOnEditorActionListener(
+                (view, actionId, event) -> {
+                    boolean enter =
+                            event != null &&
+                            event.getKeyCode() ==
+                            KeyEvent.KEYCODE_ENTER;
+
+                    if (actionId ==
+                            EditorInfo.IME_ACTION_SEARCH ||
+                            enter) {
+                        submit.run();
+                        return true;
+                    }
+                    return false;
+                }
+        );
+
+        popup.showAsDropDown(
+                anchor,
+                -popupWidth +
+                Ui.dp(this, 42),
+                Ui.dp(this, 3)
+        );
+        field.requestFocus();
     }
 
     private boolean isCurrentLudorumPath(
@@ -527,25 +826,29 @@ public class WebActivity extends Activity {
         return false;
     }
 
-    private void updateBottomNav(String url) {
-        String value =
-                url == null
-                        ? ""
-                        : url.toLowerCase(java.util.Locale.ROOT);
+    private void refreshTickerWithoutCompetingWithAccount(
+            boolean force,
+            long delayMs
+    ) {
+        if (accountMode) {
+            try {
+                CartService.CartSnapshot cached =
+                        CartService.getCachedSnapshot();
 
-        Ui.setNavActive(navHome, false);
-        Ui.setNavActive(
-                navAccount,
-                value.contains("/mon-compte")
-        );
-        Ui.setNavActive(
-                navFavorites,
-                value.contains("/favoris")
-        );
-        Ui.setNavActive(
-                navCart,
-                value.contains("/panier") ||
-                value.contains("/commande")
+                if (cached != null &&
+                        cartTicker != null) {
+                    cartTicker.applySnapshot(
+                            cached
+                    );
+                }
+            } catch (Throwable ignored) {}
+
+            return;
+        }
+
+        safeRefreshTicker(
+                force,
+                delayMs
         );
     }
 
@@ -1422,7 +1725,7 @@ public class WebActivity extends Activity {
                 // Le contenu est déjà visible avant d'activer les fonctions
                 // secondaires. En cas de souci, le panier reste accessible.
                 safeApplyAppPolish(view);
-                safeRefreshTicker(
+                refreshTickerWithoutCompetingWithAccount(
                         false,
                         500L
                 );
@@ -1473,14 +1776,13 @@ public class WebActivity extends Activity {
                 }
 
                 updateJourneyMode(url);
-                updateBottomNav(url);
 
                 // La page fonctionne même si le skin échoue.
                 safeApplyAppPolish(view);
 
                 // Le bandeau ne se rafraîchit qu'après la page,
                 // et avec un léger délai.
-                safeRefreshTicker(
+                refreshTickerWithoutCompetingWithAccount(
                         false,
                         650L
                 );

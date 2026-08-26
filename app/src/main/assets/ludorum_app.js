@@ -113,15 +113,61 @@
 
   function cleanAccountCopy() {
     if (!isAccount()) return;
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      const value = node.nodeValue || '';
-      if (value.toLowerCase().includes('vos adresses')) {
-        node.nodeValue = value
-          .replace(/vos adresses,?\s*/gi, '')
-          .replace(/vos commandes,\s*votre/gi, 'vos commandes, votre');
+
+    const root =
+      document.querySelector(
+        '.woocommerce-MyAccount-content'
+      ) ||
+      document.querySelector(
+        '.woocommerce'
+      ) ||
+      document.querySelector(
+        'main'
+      );
+
+    if (!root) return;
+
+    if (
+      root.dataset &&
+      root.dataset.ludorumCopyCleaned === '1'
+    ) {
+      return;
+    }
+
+    const candidates =
+      root.querySelectorAll(
+        'p,li,div,span'
+      );
+
+    for (const element of candidates) {
+      if (!element || element.children.length > 0) {
+        continue;
       }
+
+      const value =
+        element.textContent || '';
+
+      if (
+        value.toLowerCase().includes(
+          'vos adresses'
+        )
+      ) {
+        element.textContent =
+          value
+            .replace(
+              /vos adresses,?\s*/gi,
+              ''
+            )
+            .replace(
+              /vos commandes,\s*votre/gi,
+              'vos commandes, votre'
+            );
+      }
+    }
+
+    if (root.dataset) {
+      root.dataset.ludorumCopyCleaned =
+        '1';
     }
   }
 
@@ -2067,23 +2113,60 @@
   window.__ludorumRun = run;
 
   run();
-  setTimeout(run, 140);
-  setTimeout(run, 600);
-  setTimeout(run, 1400);
+
+  if (isAccount()) {
+    // Le compte n'a besoin que de quelques passes ciblées.
+    // L'observer léger ci-dessous prend le relais si Woo injecte les formulaires.
+    setTimeout(() => {
+      try {
+        cleanAccountCopy();
+        accountTabs();
+      } catch (_) {}
+    }, 180);
+
+    setTimeout(() => {
+      try {
+        cleanAccountCopy();
+        accountTabs();
+      } catch (_) {}
+    }, 700);
+
+  } else {
+    setTimeout(run, 140);
+    setTimeout(run, 600);
+    setTimeout(run, 1400);
+  }
 
   if (
-    (isAccount() || isLudoMatchPage()) &&
+    isLudoMatchPage() &&
     !window.__ludorumPremiumObserver
   ) {
     let timer = null;
-    window.__ludorumPremiumObserver = new MutationObserver((records) => {
-      if (rebuilding || Date.now() < observerLockedUntil) return;
-      if (mutationTouchesPremiumOnly(records)) return;
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        try { run(); } catch (_) {}
-      }, 260);
-    });
+
+    window.__ludorumPremiumObserver =
+      new MutationObserver((records) => {
+        if (
+          rebuilding ||
+          Date.now() < observerLockedUntil
+        ) {
+          return;
+        }
+
+        if (
+          mutationTouchesPremiumOnly(records)
+        ) {
+          return;
+        }
+
+        clearTimeout(timer);
+
+        timer = setTimeout(() => {
+          try {
+            rebuildLudoMatchNativeActions();
+          } catch (_) {}
+        }, 180);
+      });
+
     window.__ludorumPremiumObserver.observe(
       document.body,
       {
@@ -2091,5 +2174,55 @@
         subtree: true
       }
     );
+  }
+
+  if (
+    isAccount() &&
+    !window.__ludorumAccountObserver
+  ) {
+    let timer = null;
+    let passes = 0;
+
+    const accountPass = () => {
+      passes += 1;
+
+      try {
+        addGlobalCss();
+        cleanAccountCopy();
+        accountTabs();
+      } catch (_) {}
+
+      if (
+        document.getElementById(
+          'ludorum-account-tabs'
+        ) ||
+        passes >= 12
+      ) {
+        try {
+          window.__ludorumAccountObserver
+            .disconnect();
+        } catch (_) {}
+      }
+    };
+
+    window.__ludorumAccountObserver =
+      new MutationObserver(() => {
+        clearTimeout(timer);
+
+        timer = setTimeout(
+          accountPass,
+          120
+        );
+      });
+
+    window.__ludorumAccountObserver.observe(
+      document.body,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+    accountPass();
   }
 })();

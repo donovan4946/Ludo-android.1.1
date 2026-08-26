@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
@@ -22,6 +23,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,19 +49,16 @@ public class MainActivity extends Activity {
 
     private LinearLayout root;
     private LinearLayout content;
-    private LinearLayout categoryRow;
     private ScrollView scroll;
     private EditText search;
+
+    private final List<ProductCategory> menuCategories =
+            new ArrayList<>();
     private CartTicker cartTicker;
 
     private FavoriteStore favoriteStore;
     private final Map<Integer, List<ImageView>> favoriteHeartViews =
             new HashMap<>();
-
-    private LinearLayout navHome;
-    private LinearLayout navAccount;
-    private LinearLayout navFavorites;
-    private LinearLayout navCart;
 
     private boolean favoritesMode = false;
     private boolean productMode = false;
@@ -150,142 +149,193 @@ public class MainActivity extends Activity {
 
         buildContent();
 
-        View bottomHost = buildBottomNavHost();
-        root.addView(
-                bottomHost,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 70) + Ui.bottomSystemSpace(this)
-                )
-        );
-
         setContentView(root);
     }
 
     private void buildHeader() {
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        header.setBackgroundColor(Color.WHITE);
+        LinearLayout header =
+                new LinearLayout(this);
+
+        header.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        header.setBackgroundColor(
+                Color.WHITE
+        );
 
         header.setPadding(
-                Ui.dp(this, 14),
-                Ui.topSystemSpace(this) + Ui.dp(this, 8),
-                Ui.dp(this, 14),
-                Ui.dp(this, 7)
+                Ui.dp(this, 12),
+                Ui.topSystemSpace(this) +
+                Ui.dp(this, 5),
+                Ui.dp(this, 12),
+                Ui.dp(this, 5)
         );
 
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ludorum_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        LinearLayout row =
+                new LinearLayout(this);
 
-        LinearLayout.LayoutParams logoParams =
+        row.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        row.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        ImageView menuButton =
+                new ImageView(this);
+
+        menuButton.setImageResource(
+                R.drawable.ic_menu
+        );
+
+        menuButton.setColorFilter(
+                Ui.BLUE
+        );
+
+        menuButton.setPadding(
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9),
+                Ui.dp(this, 9)
+        );
+
+        menuButton.setContentDescription(
+                "Ouvrir le catalogue"
+        );
+
+        menuButton.setOnClickListener(
+                this::openCatalogueMenu
+        );
+
+        row.addView(
+                menuButton,
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 138),
+                        Ui.dp(this, 46),
                         Ui.dp(this, 46)
+                )
+        );
+
+        FrameLayout logoHost =
+                new FrameLayout(this);
+
+        ImageView logo =
+                new ImageView(this);
+
+        logo.setImageResource(
+                R.drawable.ludorum_logo
+        );
+
+        logo.setScaleType(
+                ImageView.ScaleType.CENTER_INSIDE
+        );
+
+        FrameLayout.LayoutParams logoParams =
+                new FrameLayout.LayoutParams(
+                        Ui.dp(this, 138),
+                        Ui.dp(this, 46),
+                        Gravity.CENTER
                 );
-        logoParams.gravity = Gravity.CENTER_HORIZONTAL;
-        header.addView(logo, logoParams);
 
-        LinearLayout searchBox = new LinearLayout(this);
-        searchBox.setOrientation(LinearLayout.HORIZONTAL);
-        searchBox.setGravity(Gravity.CENTER_VERTICAL);
-        searchBox.setPadding(
-                Ui.dp(this, 15),
-                0,
-                Ui.dp(this, 10),
-                0
-        );
-        searchBox.setBackground(
-                Ui.roundedStroke(
-                        Ui.SOFT,
-                        Ui.BORDER,
-                        1,
-                        26,
-                        this
-                )
+        logoHost.addView(
+                logo,
+                logoParams
         );
 
-        ImageView searchIcon = new ImageView(this);
-        searchIcon.setImageResource(R.drawable.ic_search);
-        searchIcon.setColorFilter(Ui.MUTED);
-        searchBox.addView(
-                searchIcon,
-                new LinearLayout.LayoutParams(
-                        Ui.dp(this, 22),
-                        Ui.dp(this, 22)
-                )
+        logoHost.setClickable(true);
+        logoHost.setFocusable(true);
+        logoHost.setContentDescription(
+                "Retour à l'accueil"
+        );
+        logoHost.setOnClickListener(
+                view -> showHome()
         );
 
-        search = new EditText(this);
-        search.setSingleLine(true);
-        search.setTextSize(15);
-        search.setTextColor(Ui.TEXT);
-        search.setHintTextColor(Color.rgb(145, 154, 166));
-        search.setHint("Rechercher dans Ludorum…");
-        search.setBackgroundColor(Color.TRANSPARENT);
-        search.setInputType(InputType.TYPE_CLASS_TEXT);
-        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        search.setPadding(Ui.dp(this, 10), 0, 0, 0);
-
-        search.setOnEditorActionListener((view, actionId, event) -> {
-            boolean enter =
-                    event != null &&
-                    event.getKeyCode() == KeyEvent.KEYCODE_ENTER;
-
-            if (actionId == EditorInfo.IME_ACTION_SEARCH || enter) {
-                String query = search.getText().toString().trim();
-                if (!query.isEmpty()) searchProducts(query);
-                hideKeyboard();
-                return true;
-            }
-            return false;
-        });
-
-        searchBox.addView(
-                search,
+        row.addView(
+                logoHost,
                 new LinearLayout.LayoutParams(
                         0,
-                        Ui.dp(this, 52),
+                        Ui.dp(this, 46),
                         1f
                 )
         );
 
-        LinearLayout.LayoutParams searchParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 54)
-                );
-        searchParams.topMargin = Ui.dp(this, 5);
-        header.addView(searchBox, searchParams);
+        ImageView searchButton =
+                new ImageView(this);
 
-        HorizontalScrollView categoryScroll =
-                new HorizontalScrollView(this);
-
-        categoryScroll.setHorizontalScrollBarEnabled(false);
-        categoryScroll.setFillViewport(false);
-
-        categoryRow = new LinearLayout(this);
-        categoryRow.setOrientation(LinearLayout.HORIZONTAL);
-        categoryRow.setPadding(
-                0,
-                Ui.dp(this, 8),
-                Ui.dp(this, 8),
-                Ui.dp(this, 4)
+        searchButton.setImageResource(
+                R.drawable.ic_search
         );
 
-        categoryScroll.addView(
-                categoryRow,
-                new ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
+        searchButton.setColorFilter(
+                Ui.BLUE
+        );
+
+        searchButton.setPadding(
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10)
+        );
+
+        searchButton.setContentDescription(
+                "Rechercher"
+        );
+
+        searchButton.setOnClickListener(
+                this::openSearchPanel
+        );
+
+        row.addView(
+                searchButton,
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 46),
+                        Ui.dp(this, 46)
+                )
+        );
+
+        ImageView cartButton =
+                new ImageView(this);
+
+        cartButton.setImageResource(
+                R.drawable.ic_cart
+        );
+        cartButton.setColorFilter(
+                Ui.BLUE
+        );
+        cartButton.setPadding(
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10)
+        );
+        cartButton.setContentDescription(
+                "Ouvrir le panier"
+        );
+        cartButton.setOnClickListener(
+                view -> {
+                    if (cartMode) {
+                        scroll.smoothScrollTo(0, 0);
+                    } else {
+                        showCart();
+                    }
+                }
+        );
+
+        row.addView(
+                cartButton,
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 46),
+                        Ui.dp(this, 46)
                 )
         );
 
         header.addView(
-                categoryScroll,
+                row,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 58)
+                        Ui.dp(this, 46)
                 )
         );
 
@@ -297,6 +347,592 @@ public class MainActivity extends Activity {
                 )
         );
     }
+
+    private void openCatalogueMenu(
+            View anchor
+    ) {
+        LinearLayout panel =
+                new LinearLayout(this);
+
+        panel.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        panel.setPadding(
+                Ui.dp(this, 12),
+                Ui.dp(this, 12),
+                Ui.dp(this, 12),
+                Ui.dp(this, 12)
+        );
+
+        panel.setBackground(
+                Ui.roundedStroke(
+                        Color.WHITE,
+                        Ui.BORDER,
+                        1,
+                        18,
+                        this
+                )
+        );
+
+        panel.setElevation(
+                Ui.dp(this, 12)
+        );
+
+        TextView title =
+                Ui.text(
+                        this,
+                        "Catalogue",
+                        17,
+                        Ui.NAVY,
+                        true
+                );
+
+        LinearLayout.LayoutParams titleParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        titleParams.bottomMargin =
+                Ui.dp(this, 9);
+
+        panel.addView(
+                title,
+                titleParams
+        );
+
+        int popupWidth =
+                Math.min(
+                        getResources()
+                                .getDisplayMetrics()
+                                .widthPixels -
+                        Ui.dp(this, 30),
+                        Ui.dp(this, 286)
+                );
+
+        PopupWindow popup =
+                new PopupWindow(
+                        panel,
+                        popupWidth,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true
+                );
+
+        popup.setBackgroundDrawable(
+                new ColorDrawable(
+                        Color.TRANSPARENT
+                )
+        );
+
+        popup.setOutsideTouchable(
+                true
+        );
+
+        popup.setElevation(
+                Ui.dp(this, 12)
+        );
+
+        TextView account =
+                catalogueMenuItem(
+                        "Mon compte",
+                        Ui.YELLOW
+                );
+        account.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            ACCOUNT,
+                            "Mon compte"
+                    );
+                }
+        );
+        panel.addView(
+                account,
+                catalogueMenuItemParams()
+        );
+
+        TextView favorites =
+                catalogueMenuItem(
+                        "Favoris",
+                        Ui.RED
+                );
+        favorites.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    showFavorites();
+                }
+        );
+        panel.addView(
+                favorites,
+                catalogueMenuItemParams()
+        );
+
+        View separator =
+                new View(this);
+        separator.setBackgroundColor(
+                Ui.BORDER
+        );
+
+        LinearLayout.LayoutParams separatorParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 1)
+                );
+        separatorParams.topMargin =
+                Ui.dp(this, 4);
+        separatorParams.bottomMargin =
+                Ui.dp(this, 10);
+
+        panel.addView(
+                separator,
+                separatorParams
+        );
+
+        TextView shop =
+                catalogueMenuItem(
+                        "Boutique",
+                        Ui.BLUE
+                );
+
+        shop.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    showCatalogue(
+                            "Boutique",
+                            "Tous les produits Ludorum.",
+                            "",
+                            1
+                    );
+                }
+        );
+
+        panel.addView(
+                shop,
+                catalogueMenuItemParams()
+        );
+
+        int[] accents =
+                new int[]{
+                        Ui.BLUE,
+                        Ui.RED,
+                        Ui.YELLOW,
+                        Ui.NAVY
+                };
+
+        int index = 0;
+
+        for (ProductCategory category :
+                new ArrayList<>(
+                        menuCategories
+                )) {
+            int accent =
+                    accents[
+                            index++ %
+                            accents.length
+                    ];
+
+            TextView item =
+                    catalogueMenuItem(
+                            category.name,
+                            accent
+                    );
+
+            item.setOnClickListener(
+                    view -> {
+                        popup.dismiss();
+
+                        showCatalogue(
+                                category.name,
+                                "Parcourez cette catégorie du catalogue.",
+                                "&category=" +
+                                category.id,
+                                1
+                        );
+                    }
+            );
+
+            panel.addView(
+                    item,
+                    catalogueMenuItemParams()
+            );
+        }
+
+        if (menuCategories.isEmpty()) {
+            TextView loading =
+                    Ui.text(
+                            this,
+                            "Les catégories se chargent…",
+                            12,
+                            Ui.MUTED,
+                            false
+                    );
+
+            loading.setPadding(
+                    Ui.dp(this, 11),
+                    Ui.dp(this, 9),
+                    Ui.dp(this, 11),
+                    Ui.dp(this, 9)
+            );
+
+            panel.addView(
+                    loading
+            );
+        }
+
+        popup.showAsDropDown(
+                anchor,
+                0,
+                Ui.dp(this, 3)
+        );
+    }
+
+    private TextView catalogueMenuItem(
+            String label,
+            int accent
+    ) {
+        int textColor =
+                accent == Ui.YELLOW
+                        ? Ui.NAVY
+                        : accent;
+
+        TextView item =
+                Ui.text(
+                        this,
+                        label,
+                        15,
+                        textColor,
+                        true
+                );
+
+        item.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        item.setPadding(
+                Ui.dp(this, 13),
+                0,
+                Ui.dp(this, 13),
+                0
+        );
+
+        item.setBackground(
+                Ui.roundedStroke(
+                        Ui.softAccent(accent),
+                        Color.TRANSPARENT,
+                        0,
+                        13,
+                        this
+                )
+        );
+
+        return item;
+    }
+
+    private LinearLayout.LayoutParams catalogueMenuItemParams() {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
+                );
+
+        params.bottomMargin =
+                Ui.dp(this, 7);
+
+        return params;
+    }
+
+    private void openSearchPanel(
+            View anchor
+    ) {
+        LinearLayout panel =
+                new LinearLayout(this);
+
+        panel.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        panel.setPadding(
+                Ui.dp(this, 13),
+                Ui.dp(this, 12),
+                Ui.dp(this, 13),
+                Ui.dp(this, 13)
+        );
+
+        panel.setBackground(
+                Ui.roundedStroke(
+                        Color.WHITE,
+                        Ui.BORDER,
+                        1,
+                        18,
+                        this
+                )
+        );
+
+        panel.setElevation(
+                Ui.dp(this, 12)
+        );
+
+        TextView label =
+                Ui.text(
+                        this,
+                        "Rechercher dans Ludorum",
+                        15,
+                        Ui.NAVY,
+                        true
+                );
+
+        panel.addView(
+                label
+        );
+
+        LinearLayout searchBox =
+                new LinearLayout(this);
+
+        searchBox.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        searchBox.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        searchBox.setPadding(
+                Ui.dp(this, 12),
+                0,
+                Ui.dp(this, 8),
+                0
+        );
+
+        searchBox.setBackground(
+                Ui.roundedStroke(
+                        Ui.SOFT,
+                        Ui.BORDER,
+                        1,
+                        22,
+                        this
+                )
+        );
+
+        ImageView icon =
+                new ImageView(this);
+
+        icon.setImageResource(
+                R.drawable.ic_search
+        );
+
+        icon.setColorFilter(
+                Ui.BLUE
+        );
+
+        searchBox.addView(
+                icon,
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 20),
+                        Ui.dp(this, 20)
+                )
+        );
+
+        EditText field =
+                new EditText(this);
+
+        search = field;
+
+        field.setSingleLine(
+                true
+        );
+
+        field.setTextSize(
+                15
+        );
+
+        field.setTextColor(
+                Ui.TEXT
+        );
+
+        field.setHintTextColor(
+                Color.rgb(
+                        145,
+                        154,
+                        166
+                )
+        );
+
+        field.setHint(
+                "Jeu, carte, accessoire…"
+        );
+
+        field.setBackgroundColor(
+                Color.TRANSPARENT
+        );
+
+        field.setInputType(
+                InputType.TYPE_CLASS_TEXT
+        );
+
+        field.setImeOptions(
+                EditorInfo.IME_ACTION_SEARCH
+        );
+
+        field.setPadding(
+                Ui.dp(this, 9),
+                0,
+                0,
+                0
+        );
+
+        searchBox.addView(
+                field,
+                new LinearLayout.LayoutParams(
+                        0,
+                        Ui.dp(this, 46),
+                        1f
+                )
+        );
+
+        LinearLayout.LayoutParams boxParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 46)
+                );
+
+        boxParams.topMargin =
+                Ui.dp(this, 9);
+
+        panel.addView(
+                searchBox,
+                boxParams
+        );
+
+        TextView action =
+                Ui.pill(
+                        this,
+                        "Rechercher",
+                        Color.WHITE,
+                        Ui.BLUE,
+                        Ui.BLUE
+                );
+
+        action.setGravity(
+                Gravity.CENTER
+        );
+
+        LinearLayout.LayoutParams actionParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
+                );
+
+        actionParams.topMargin =
+                Ui.dp(this, 9);
+
+        panel.addView(
+                action,
+                actionParams
+        );
+
+        int popupWidth =
+                Math.min(
+                        getResources()
+                                .getDisplayMetrics()
+                                .widthPixels -
+                        Ui.dp(this, 28),
+                        Ui.dp(this, 350)
+                );
+
+        PopupWindow popup =
+                new PopupWindow(
+                        panel,
+                        popupWidth,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true
+                );
+
+        popup.setBackgroundDrawable(
+                new ColorDrawable(
+                        Color.TRANSPARENT
+                )
+        );
+
+        popup.setOutsideTouchable(
+                true
+        );
+
+        popup.setElevation(
+                Ui.dp(this, 12)
+        );
+
+        Runnable submit =
+                () -> {
+                    String query =
+                            field.getText()
+                                    .toString()
+                                    .trim();
+
+                    if (query.isEmpty()) {
+                        return;
+                    }
+
+                    hideKeyboard();
+                    popup.dismiss();
+
+                    searchProducts(
+                            query
+                    );
+                };
+
+        action.setOnClickListener(
+                view -> submit.run()
+        );
+
+        field.setOnEditorActionListener(
+                (view, actionId, event) -> {
+                    boolean enter =
+                            event != null &&
+                            event.getKeyCode() ==
+                            KeyEvent.KEYCODE_ENTER;
+
+                    if (actionId ==
+                            EditorInfo.IME_ACTION_SEARCH ||
+                            enter) {
+                        submit.run();
+                        return true;
+                    }
+
+                    return false;
+                }
+        );
+
+        popup.showAsDropDown(
+                anchor,
+                -popupWidth +
+                Ui.dp(this, 46),
+                Ui.dp(this, 3)
+        );
+
+        field.requestFocus();
+
+        field.postDelayed(
+                () -> {
+                    try {
+                        InputMethodManager keyboard =
+                                (InputMethodManager)
+                                        getSystemService(
+                                                Context.INPUT_METHOD_SERVICE
+                                        );
+
+                        keyboard.showSoftInput(
+                                field,
+                                InputMethodManager.SHOW_IMPLICIT
+                        );
+
+                    } catch (Exception ignored) {}
+                },
+                130
+        );
+    }
+
 
     private void buildContent() {
         scroll = new ScrollView(this);
@@ -310,7 +946,8 @@ public class MainActivity extends Activity {
                 Ui.dp(this, 16),
                 Ui.dp(this, 8),
                 Ui.dp(this, 16),
-                Ui.dp(this, 28)
+                Ui.dp(this, 28) +
+                Ui.bottomSystemSpace(this)
         );
 
         scroll.addView(
@@ -331,229 +968,34 @@ public class MainActivity extends Activity {
         );
     }
 
-    private View buildBottomNavHost() {
-        FrameLayout host =
-                new FrameLayout(this);
-
-        host.setBackgroundColor(
-                Ui.NAVY
-        );
-
-        LinearLayout stripe =
-                Ui.brandStripe(this);
-
-        FrameLayout.LayoutParams stripeParams =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 4),
-                        Gravity.TOP
-                );
-
-        host.addView(
-                stripe,
-                stripeParams
-        );
-
-        View nav =
-                buildBottomNav();
-
-        FrameLayout.LayoutParams navParams =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 66),
-                        Gravity.TOP
-                );
-
-        navParams.topMargin =
-                Ui.dp(this, 4);
-
-        host.addView(
-                nav,
-                navParams
-        );
-
-        return host;
-    }
-
-    private View buildBottomNav() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER);
-        bar.setPadding(
-                Ui.dp(this, 7),
-                Ui.dp(this, 5),
-                Ui.dp(this, 7),
-                Ui.dp(this, 5)
-        );
-        bar.setBackground(
-                Ui.gradient(
-                        Color.WHITE,
-                        Ui.SOFT,
-                        0,
-                        this
-                )
-        );
-        bar.setElevation(
-                Ui.dp(this, 14)
-        );
-
-        navHome =
-                Ui.navItem(this, R.drawable.ic_home, "Accueil", true);
-        navAccount =
-                Ui.navItem(this, R.drawable.ic_person, "Compte", false);
-        navFavorites =
-                Ui.navItem(this, R.drawable.ic_heart, "Favoris", false);
-        navCart =
-                Ui.navItem(this, R.drawable.ic_cart, "Panier", false);
-
-        navHome.setOnClickListener(view -> {
-            if (!catalogueMode &&
-                    !favoritesMode &&
-                    !productMode &&
-                    !cartMode &&
-                    content != null &&
-                    content.getChildCount() > 0) {
-                scroll.smoothScrollTo(
-                        0,
-                        0
-                );
-                return;
-            }
-
-            showHome();
-        });
-
-        navAccount.setOnClickListener(
-                view -> openWeb(
-                        ACCOUNT,
-                        "Mon compte"
-                )
-        );
-
-        navFavorites.setOnClickListener(view -> {
-            if (favoritesMode) {
-                scroll.smoothScrollTo(
-                        0,
-                        0
-                );
-                return;
-            }
-
-            showFavorites();
-        });
-
-        navCart.setOnClickListener(
-                view -> {
-                    if (cartMode) {
-                        scroll.smoothScrollTo(
-                                0,
-                                0
-                        );
-                        return;
-                    }
-
-                    showCart();
-                }
-        );
-
-        LinearLayout[] items =
-                new LinearLayout[]{
-                        navHome,
-                        navAccount,
-                        navFavorites,
-                        navCart
-                };
-
-        for (LinearLayout item : items) {
-            bar.addView(
-                    item,
-                    new LinearLayout.LayoutParams(
-                            0,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            1f
-                    )
-            );
-        }
-
-        return bar;
-    }
-
     private void loadCategories() {
-        categoryRow.removeAllViews();
-
-        TextView all = chip("Boutique", Ui.BLUE);
-        all.setOnClickListener(
-                view -> showCatalogue(
-                        "Boutique",
-                        "Tous les produits Ludorum.",
-                        "",
-                        1
-                )
-        );
-        categoryRow.addView(all, chipParams());
+        menuCategories.clear();
 
         ApiClient.getTopCategories(
                 new ApiClient.Callback<List<ProductCategory>>() {
                     @Override
-                    public void onSuccess(List<ProductCategory> categories) {
-                        int[] colors =
-                                new int[]{
-                                        Ui.BLUE,
-                                        Ui.RED,
-                                        Ui.YELLOW,
-                                        Ui.NAVY
-                                };
-                        int index = 0;
+                    public void onSuccess(
+                            List<ProductCategory> categories
+                    ) {
+                        menuCategories.clear();
 
-                        for (ProductCategory category : categories) {
-                            int accent = colors[index++ % colors.length];
-                            TextView item = chip(category.name, accent);
-
-                            item.setOnClickListener(
-                                    view -> showCatalogue(
-                                            category.name,
-                                            "Parcourez cette catégorie du catalogue.",
-                                            "&category=" + category.id,
-                                            1
-                                    )
+                        if (categories != null) {
+                            menuCategories.addAll(
+                                    categories
                             );
-                            categoryRow.addView(item, chipParams());
                         }
                     }
 
                     @Override
-                    public void onError(Exception error) {
-                        // "Boutique" reste disponible même hors connexion.
+                    public void onError(
+                            Exception error
+                    ) {
+                        // Boutique reste disponible.
                     }
                 }
         );
     }
 
-    private LinearLayout.LayoutParams chipParams() {
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Ui.dp(this, 44)
-                );
-        params.setMargins(0, 0, Ui.dp(this, 9), 0);
-        return params;
-    }
-
-    private TextView chip(String label, int accent) {
-        int textColor =
-                accent == Ui.YELLOW ? Ui.NAVY : accent;
-
-        TextView item =
-                Ui.pill(
-                        this,
-                        label,
-                        textColor,
-                        Color.WHITE,
-                        accent
-                );
-        item.setTextSize(14);
-        return item;
-    }
 
     private void showHome() {
         final int generation = ++screenGeneration;
@@ -561,9 +1003,9 @@ public class MainActivity extends Activity {
         favoritesMode = false;
         productMode = false;
         cartMode = false;
-        setMainNavActive("home");
+
         favoriteHeartViews.clear();
-        search.setText("");
+        setSearchText("");
         content.removeAllViews();
         scroll.scrollTo(0, 0);
 
@@ -760,7 +1202,7 @@ public class MainActivity extends Activity {
         favoritesMode = false;
         productMode = false;
         cartMode = false;
-        setMainNavActive("home");
+
         favoriteHeartViews.clear();
         content.removeAllViews();
         scroll.scrollTo(0, 0);
@@ -1633,7 +2075,7 @@ public class MainActivity extends Activity {
 
             if (query != null &&
                     !query.trim().isEmpty()) {
-                search.setText(query);
+                setSearchText(query);
                 searchProducts(query);
             }
         }
@@ -1702,7 +2144,7 @@ public class MainActivity extends Activity {
 
         if (searchQuery != null &&
                 !searchQuery.trim().isEmpty()) {
-            search.setText(searchQuery);
+            setSearchText(searchQuery);
             searchProducts(searchQuery);
             return;
         }
@@ -1813,7 +2255,7 @@ public class MainActivity extends Activity {
         catalogueMode = false;
         favoritesMode = false;
         cartMode = false;
-        setMainNavActive("home");
+
         favoriteHeartViews.clear();
         content.removeAllViews();
         scroll.scrollTo(0, 0);
@@ -1927,7 +2369,7 @@ public class MainActivity extends Activity {
         catalogueMode = false;
         favoritesMode = false;
         cartMode = false;
-        setMainNavActive("home");
+
         favoriteHeartViews.clear();
         content.removeAllViews();
         scroll.scrollTo(0, 0);
@@ -2416,13 +2858,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void setMainNavActive(String active) {
-        Ui.setNavActive(navHome, "home".equals(active));
-        Ui.setNavActive(navAccount, "account".equals(active));
-        Ui.setNavActive(navFavorites, "favorites".equals(active));
-        Ui.setNavActive(navCart, "cart".equals(active));
-    }
-
     private void showCart() {
         final int generation =
                 ++screenGeneration;
@@ -2433,12 +2868,8 @@ public class MainActivity extends Activity {
         cartMode = true;
         cartMutationInFlight = false;
 
-        setMainNavActive(
-                "cart"
-        );
-
         favoriteHeartViews.clear();
-        search.setText("");
+        setSearchText("");
         content.removeAllViews();
         scroll.scrollTo(0, 0);
 
@@ -3880,9 +4311,9 @@ public class MainActivity extends Activity {
         favoritesMode = true;
         productMode = false;
         cartMode = false;
-        setMainNavActive("favorites");
+
         favoriteHeartViews.clear();
-        search.setText("");
+        setSearchText("");
         content.removeAllViews();
         scroll.scrollTo(0, 0);
 
@@ -4317,17 +4748,39 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void setSearchText(
+            String value
+    ) {
+        if (search == null) {
+            return;
+        }
+
+        search.setText(
+                value == null
+                        ? ""
+                        : value
+        );
+    }
+
     private void hideKeyboard() {
+        if (search == null) {
+            return;
+        }
+
         try {
             InputMethodManager keyboard =
                     (InputMethodManager)
-                            getSystemService(Context.INPUT_METHOD_SERVICE);
+                            getSystemService(
+                                    Context.INPUT_METHOD_SERVICE
+                            );
 
             keyboard.hideSoftInputFromWindow(
                     search.getWindowToken(),
                     0
             );
+
             search.clearFocus();
+
         } catch (Exception ignored) {}
     }
 
