@@ -180,8 +180,8 @@ public class MainActivity extends Activity {
 
         LinearLayout.LayoutParams logoParams =
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 178),
-                        Ui.dp(this, 48)
+                        Ui.dp(this, 138),
+                        Ui.dp(this, 46)
                 );
         logoParams.gravity = Gravity.CENTER_HORIZONTAL;
         header.addView(logo, logoParams);
