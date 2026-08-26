@@ -132,6 +132,116 @@ final class Ui {
         return color;
     }
 
+    static int softPanel(int accent) {
+        if (accent == RED) {
+            return Color.rgb(255, 246, 246);
+        }
+
+        if (accent == YELLOW) {
+            return Color.rgb(255, 250, 238);
+        }
+
+        if (accent == GREEN) {
+            return Color.rgb(241, 249, 245);
+        }
+
+        if (accent == MUTED || accent == NAVY) {
+            return Color.rgb(247, 249, 252);
+        }
+
+        return Color.rgb(244, 248, 255);
+    }
+
+    static String foldLabel(String label) {
+        if (label == null) return "";
+        String value = label.toLowerCase();
+        value = value.replace('é','e').replace('è','e').replace('ê','e').replace('ë','e');
+        value = value.replace('à','a').replace('â','a');
+        value = value.replace('î','i').replace('ï','i');
+        value = value.replace('ô','o').replace('ö','o');
+        value = value.replace('ù','u').replace('û','u').replace('ü','u');
+        value = value.replace('ç','c');
+        return value;
+    }
+
+    static int accentForLabel(String label) {
+        String value = foldLabel(label);
+
+        if (value.contains("pack")) {
+            return GREEN;
+        }
+
+        if (value.contains("ludomatch groupe")) {
+            return RED;
+        }
+
+        if (value.contains("ludomatch")) {
+            return GREEN;
+        }
+
+        if (value.contains("accessoire") ||
+                value.contains("deck") ||
+                value.contains("tapis") ||
+                value.contains("classeur") ||
+                value.contains("protege")) {
+            return RED;
+        }
+
+        if (value.contains("carte") ||
+                value.contains("lorcana") ||
+                value.contains("one piece") ||
+                value.contains("pokemon") ||
+                value.contains("riftbound")) {
+            return YELLOW;
+        }
+
+        if (value.contains("societe") ||
+                value.contains("strategie") ||
+                value.contains("famil") ||
+                value.contains("ambiance") ||
+                value.contains("enfant") ||
+                value.contains("expert") ||
+                value.contains("cooperatif") ||
+                value.contains("coop") ||
+                value.contains("solo") ||
+                value.contains("deux joueurs") ||
+                value.contains("enquete") ||
+                value.contains("escape")) {
+            return BLUE;
+        }
+
+        if (value.contains("favori")) {
+            return RED;
+        }
+
+        if (value.contains("compte")) {
+            return YELLOW;
+        }
+
+        if (value.contains("contact") ||
+                value.contains("bug") ||
+                value.contains("mentions") ||
+                value.contains("information") ||
+                value.contains("report")) {
+            return MUTED;
+        }
+
+        if (value.contains("promotion")) {
+            return RED;
+        }
+
+        if (value.contains("meilleures ventes") ||
+                value.contains("prefere")) {
+            return YELLOW;
+        }
+
+        if (value.contains("nouveaute")) {
+            return BLUE;
+        }
+
+        return BLUE;
+    }
+
     static TextView text(Context c, String value, int sp, int color, boolean strong) {
         TextView t = new TextView(c);
         t.setText(value);

@@ -152,7 +152,7 @@ public class WebActivity extends Activity {
     private void build() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(Ui.MENU_CANVAS);
         root.setPadding(
                 0,
                 Ui.topSystemSpace(this),
@@ -175,7 +175,7 @@ public class WebActivity extends Activity {
                 Ui.dp(this, 4)
         );
         top.setBackgroundColor(
-                Color.WHITE
+                Ui.MENU_CANVAS
         );
         top.setElevation(
                 Ui.dp(this, 3)
@@ -329,6 +329,14 @@ public class WebActivity extends Activity {
 
         root.addView(top);
 
+        root.addView(
+                Ui.brandStripe(this),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+        );
+
         cartTicker =
                 new CartTicker(this);
 
@@ -407,7 +415,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.20"
+                " LudorumAndroid/1.1.21"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -595,23 +603,12 @@ public class WebActivity extends Activity {
                             return;
                         }
 
-                        int[] accents =
-                                new int[]{
-                                        Ui.BLUE,
-                                        Ui.RED,
-                                        Ui.YELLOW,
-                                        Ui.NAVY
-                                };
-
-                        int index = 0;
-
                         for (ProductCategory category :
                                 categories) {
                             int accent =
-                                    accents[
-                                            index++ %
-                                            accents.length
-                                    ];
+                                    Ui.accentForLabel(
+                                            category.name
+                                    );
 
                             addExpandableTopCategory(
                                     shopBlock,
@@ -630,7 +627,7 @@ public class WebActivity extends Activity {
                                 "Catégories indisponibles"
                         );
                         loadingCategories.setTextColor(
-                                Ui.RED
+                                Ui.MENU_MUTED
                         );
                     }
                 }
@@ -645,13 +642,13 @@ public class WebActivity extends Activity {
         LinearLayout ludoMatchBlock =
                 topMenuSectionBlock(
                         "LudoMatch",
-                        Ui.YELLOW
+                        Ui.GREEN
                 );
 
         TextView ludoMatch =
                 topMenuItem(
                         "LudoMatch",
-                        Ui.BLUE
+                        Ui.GREEN
                 );
 
         ludoMatch.setOnClickListener(
@@ -672,7 +669,7 @@ public class WebActivity extends Activity {
         TextView ludoMatchGroup =
                 topMenuItem(
                         "LudoMatch Groupe",
-                        Ui.RED
+                        Ui.BLUE
                 );
 
         ludoMatchGroup.setOnClickListener(
@@ -699,7 +696,7 @@ public class WebActivity extends Activity {
         LinearLayout accountBlock =
                 topMenuSectionBlock(
                         "Votre espace",
-                        Ui.RED
+                        Ui.YELLOW
                 );
 
         TextView favorites =
@@ -766,7 +763,7 @@ public class WebActivity extends Activity {
         LinearLayout infoBlock =
                 topMenuSectionBlock(
                         "Aide & informations",
-                        Ui.NAVY
+                        Ui.MUTED
                 );
 
         TextView bug =
@@ -790,7 +787,7 @@ public class WebActivity extends Activity {
         TextView contact =
                 topMenuItem(
                         "Nous contacter",
-                        Ui.BLUE
+                        Ui.MUTED
                 );
         contact.setOnClickListener(
                 view -> {
@@ -888,7 +885,7 @@ public class WebActivity extends Activity {
         );
         block.setBackground(
                 Ui.roundedStroke(
-                        Ui.MENU_CARD,
+                        Ui.softPanel(accent),
                         Ui.MENU_BORDER,
                         1,
                         18,
@@ -1283,7 +1280,7 @@ public class WebActivity extends Activity {
         );
         item.setBackground(
                 Ui.roundedStroke(
-                        Ui.MENU_ITEM,
+                        Ui.softPanel(accent),
                         Ui.MENU_BORDER,
                         1,
                         12,

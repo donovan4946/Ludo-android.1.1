@@ -1068,7 +1068,7 @@ final class CartService {
 
             connection.setRequestProperty(
                     "User-Agent",
-                    "LudorumAndroid/1.1.20"
+                    "LudorumAndroid/1.1.21"
             );
 
             if (session.cookies != null &&

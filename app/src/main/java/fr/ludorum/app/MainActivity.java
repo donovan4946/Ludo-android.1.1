@@ -153,7 +153,7 @@ public class MainActivity extends Activity {
     private void buildScreen() {
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(Ui.MENU_CANVAS);
 
         buildHeader();
 
@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
         );
 
         header.setBackgroundColor(
-                Color.WHITE
+                Ui.MENU_CANVAS
         );
 
         header.setPadding(
@@ -377,6 +377,17 @@ public class MainActivity extends Activity {
                 )
         );
 
+        LinearLayout.LayoutParams stripeParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        stripeParams.topMargin = Ui.dp(this, 6);
+        header.addView(
+                Ui.brandStripe(this),
+                stripeParams
+        );
+
         root.addView(
                 header,
                 new LinearLayout.LayoutParams(
@@ -492,25 +503,14 @@ public class MainActivity extends Activity {
                 catalogueMenuItemParams()
         );
 
-        int[] accents =
-                new int[]{
-                        Ui.BLUE,
-                        Ui.RED,
-                        Ui.YELLOW,
-                        Ui.NAVY
-                };
-
-        int index = 0;
-
         for (ProductCategory category :
                 new ArrayList<>(
                         menuCategories
                 )) {
             int accent =
-                    accents[
-                            index++ %
-                            accents.length
-                    ];
+                    Ui.accentForLabel(
+                            category.name
+                    );
 
             addExpandableCatalogueCategory(
                     shopBlock,
@@ -541,13 +541,13 @@ public class MainActivity extends Activity {
         LinearLayout ludoMatchBlock =
                 menuSectionBlock(
                         "LudoMatch",
-                        Ui.YELLOW
+                        Ui.GREEN
                 );
 
         TextView ludoMatch =
                 catalogueMenuItem(
                         "LudoMatch",
-                        Ui.BLUE
+                        Ui.GREEN
                 );
 
         ludoMatch.setOnClickListener(
@@ -569,7 +569,7 @@ public class MainActivity extends Activity {
         TextView ludoMatchGroup =
                 catalogueMenuItem(
                         "LudoMatch Groupe",
-                        Ui.RED
+                        Ui.BLUE
                 );
 
         ludoMatchGroup.setOnClickListener(
@@ -597,7 +597,7 @@ public class MainActivity extends Activity {
         LinearLayout accountBlock =
                 menuSectionBlock(
                         "Votre espace",
-                        Ui.RED
+                        Ui.YELLOW
                 );
 
         TextView favorites =
@@ -644,7 +644,7 @@ public class MainActivity extends Activity {
         LinearLayout infoBlock =
                 menuSectionBlock(
                         "Aide & informations",
-                        Ui.NAVY
+                        Ui.MUTED
                 );
 
         TextView bug =
@@ -669,7 +669,7 @@ public class MainActivity extends Activity {
         TextView contact =
                 catalogueMenuItem(
                         "Nous contacter",
-                        Ui.BLUE
+                        Ui.MUTED
                 );
         contact.setOnClickListener(
                 view -> {
@@ -771,7 +771,7 @@ public class MainActivity extends Activity {
         );
         block.setBackground(
                 Ui.roundedStroke(
-                        Ui.MENU_CARD,
+                        Ui.softPanel(accent),
                         Ui.MENU_BORDER,
                         1,
                         18,
@@ -1172,7 +1172,7 @@ public class MainActivity extends Activity {
         );
         item.setBackground(
                 Ui.roundedStroke(
-                        Ui.MENU_ITEM,
+                        Ui.softPanel(accent),
                         Ui.MENU_BORDER,
                         1,
                         12,
@@ -1488,7 +1488,7 @@ public class MainActivity extends Activity {
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
-        scroll.setBackgroundColor(Color.WHITE);
+        scroll.setBackgroundColor(Ui.MENU_CANVAS);
 
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -1647,6 +1647,52 @@ public class MainActivity extends Activity {
         subtitleParams.topMargin = Ui.dp(this, 10);
         hero.addView(subtitle, subtitleParams);
 
+        LinearLayout mood = new LinearLayout(this);
+        mood.setOrientation(LinearLayout.HORIZONTAL);
+        mood.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView boardGames = Ui.pill(
+                this,
+                "Société",
+                Ui.BLUE,
+                Ui.softPanel(Ui.BLUE),
+                Color.TRANSPARENT
+        );
+        boardGames.setTextSize(11);
+
+        TextView cardGames = Ui.pill(
+                this,
+                "Cartes",
+                Ui.menuAccentText(Ui.YELLOW),
+                Ui.softPanel(Ui.YELLOW),
+                Color.TRANSPARENT
+        );
+        cardGames.setTextSize(11);
+
+        TextView accessories = Ui.pill(
+                this,
+                "Accessoires",
+                Ui.RED,
+                Ui.softPanel(Ui.RED),
+                Color.TRANSPARENT
+        );
+        accessories.setTextSize(11);
+
+        mood.addView(boardGames, new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f));
+        LinearLayout.LayoutParams cg = new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f);
+        cg.leftMargin = Ui.dp(this, 8);
+        mood.addView(cardGames, cg);
+        LinearLayout.LayoutParams ag = new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f);
+        ag.leftMargin = Ui.dp(this, 8);
+        mood.addView(accessories, ag);
+
+        LinearLayout.LayoutParams moodParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        moodParams.topMargin = Ui.dp(this, 14);
+        hero.addView(mood, moodParams);
+
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -1654,18 +1700,18 @@ public class MainActivity extends Activity {
                 Ui.pill(
                         this,
                         "Trouver mon jeu",
-                        Ui.NAVY,
-                        Color.rgb(255, 199, 43),
-                        Color.rgb(255, 199, 43)
+                        Color.WHITE,
+                        Ui.GREEN,
+                        Ui.GREEN
                 );
 
         TextView group =
                 Ui.pill(
                         this,
                         "Choisir à plusieurs",
-                        Color.WHITE,
-                        Color.TRANSPARENT,
-                        Color.WHITE
+                        Ui.NAVY,
+                        Color.rgb(255, 199, 43),
+                        Color.rgb(255, 199, 43)
                 );
 
         solo.setTextSize(13);
@@ -1756,12 +1802,14 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         scroll.scrollTo(0, 0);
 
+        int pageAccent = Ui.accentForLabel(title);
+
         TextView kicker =
                 Ui.text(
                         this,
                         "CATALOGUE LUDORUM",
                         10,
-                        Ui.BLUE,
+                        Ui.menuAccentText(pageAccent),
                         true
                 );
         content.addView(kicker);
@@ -1983,9 +2031,9 @@ public class MainActivity extends Activity {
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                         ));
 
-                        int[] accents = new int[]{Ui.BLUE, Ui.RED, Ui.YELLOW, Ui.NAVY};
+                        int parentAccent = Ui.accentForLabel(parent.name);
 
-                        TextView all = subcategoryTab("Tous", active.id == parent.id, Ui.BLUE);
+                        TextView all = subcategoryTab("Tous", active.id == parent.id, parentAccent);
                         all.setOnClickListener(view -> showCatalogue(
                                 parent.name,
                                 "Tous les produits de " + parent.name + ".",
@@ -1994,9 +2042,8 @@ public class MainActivity extends Activity {
                         ));
                         row.addView(all, subcategoryTabParams());
 
-                        int index = 0;
                         for (ProductCategory child : children) {
-                            int accent = accents[index++ % accents.length];
+                            int accent = Ui.accentForLabel(child.name);
                             TextView tab = subcategoryTab(child.name, active.id == child.id, accent);
                             tab.setOnClickListener(view -> showCatalogue(
                                     child.name,
@@ -2028,13 +2075,13 @@ public class MainActivity extends Activity {
     ) {
         int textColor = active
                 ? (accent == Ui.YELLOW ? Ui.NAVY : Color.WHITE)
-                : (accent == Ui.YELLOW ? Ui.NAVY : accent);
+                : Ui.menuAccentText(accent);
 
         TextView tab = Ui.pill(
                 this,
                 label,
                 textColor,
-                active ? accent : Color.WHITE,
+                active ? accent : Ui.softPanel(accent),
                 accent
         );
         tab.setTextSize(13);
@@ -5510,11 +5557,7 @@ public class MainActivity extends Activity {
             );
 
             int background =
-                    accent == Ui.RED
-                            ? Color.rgb(255, 248, 248)
-                            : accent == Ui.YELLOW
-                            ? Ui.IVORY
-                            : Color.rgb(248, 251, 255);
+                    Ui.softPanel(accent);
 
             wrapper.setBackground(
                     Ui.roundedStroke(
@@ -5531,7 +5574,7 @@ public class MainActivity extends Activity {
                             MainActivity.this,
                             kicker,
                             10,
-                            accent == Ui.YELLOW ? Ui.YELLOW : accent,
+                            Ui.menuAccentText(accent),
                             true
                     );
             wrapper.addView(kickerView);
@@ -5562,8 +5605,8 @@ public class MainActivity extends Activity {
                     Ui.pill(
                             MainActivity.this,
                             "Tout voir",
-                            accent == Ui.YELLOW ? Ui.NAVY : accent,
-                            Ui.softAccent(accent),
+                            Ui.menuAccentText(accent),
+                            Ui.softPanel(accent),
                             Color.TRANSPARENT
                     );
             all.setTextSize(11);
@@ -5629,7 +5672,7 @@ public class MainActivity extends Activity {
                             MainActivity.this,
                             "‹",
                             Ui.BLUE,
-                            Color.WHITE,
+                            Ui.softPanel(Ui.BLUE),
                             Ui.BORDER
                     );
 
@@ -5648,7 +5691,7 @@ public class MainActivity extends Activity {
                             MainActivity.this,
                             "›",
                             Ui.BLUE,
-                            Color.WHITE,
+                            Ui.softPanel(Ui.BLUE),
                             Ui.BORDER
                     );
 
