@@ -400,13 +400,23 @@ public class MainActivity extends Activity {
                 LinearLayout.VERTICAL
         );
         panel.setPadding(
-                Ui.dp(this, 12),
-                Ui.dp(this, 12),
-                Ui.dp(this, 12),
-                Ui.dp(this, 12)
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10)
         );
         panel.setBackgroundColor(
-                Color.WHITE
+                Color.TRANSPARENT
+        );
+
+        scroller.setBackground(
+                Ui.roundedStroke(
+                        Ui.MENU_CANVAS,
+                        Ui.MENU_BORDER,
+                        1,
+                        20,
+                        this
+                )
         );
 
         scroller.addView(
@@ -432,7 +442,7 @@ public class MainActivity extends Activity {
                                 getResources()
                                         .getDisplayMetrics()
                                         .heightPixels *
-                                0.76f
+                                0.78f
                         ),
                         Ui.dp(this, 640)
                 );
@@ -446,7 +456,7 @@ public class MainActivity extends Activity {
                 );
         popup.setBackgroundDrawable(
                 new ColorDrawable(
-                        Color.WHITE
+                        Color.TRANSPARENT
                 )
         );
         popup.setOutsideTouchable(true);
@@ -512,20 +522,14 @@ public class MainActivity extends Activity {
 
         if (menuCategories.isEmpty()) {
             TextView loading =
-                    Ui.text(
-                            this,
+                    catalogueMenuItem(
                             "Les catégories se chargent…",
-                            12,
-                            Ui.MUTED,
-                            false
+                            Ui.MUTED
                     );
-            loading.setPadding(
-                    Ui.dp(this, 12),
-                    Ui.dp(this, 8),
-                    Ui.dp(this, 12),
-                    Ui.dp(this, 8)
+            shopBlock.addView(
+                    loading,
+                    catalogueMenuItemParams()
             );
-            shopBlock.addView(loading);
         }
 
         panel.addView(
@@ -760,17 +764,17 @@ public class MainActivity extends Activity {
                 LinearLayout.VERTICAL
         );
         block.setPadding(
-                Ui.dp(this, 10),
-                Ui.dp(this, 10),
-                Ui.dp(this, 10),
-                Ui.dp(this, 5)
+                Ui.dp(this, 8),
+                Ui.dp(this, 8),
+                Ui.dp(this, 8),
+                Ui.dp(this, 3)
         );
         block.setBackground(
                 Ui.roundedStroke(
-                        Ui.softAccent(accent),
-                        Ui.BORDER,
+                        Ui.MENU_CARD,
+                        Ui.MENU_BORDER,
                         1,
-                        16,
+                        18,
                         this
                 )
         );
@@ -782,16 +786,26 @@ public class MainActivity extends Activity {
                                 Locale.ROOT
                         ),
                         10,
-                        accent == Ui.YELLOW
-                                ? Ui.NAVY
-                                : accent,
+                        Ui.menuAccentText(
+                                accent
+                        ),
                         true
                 );
+        heading.setGravity(
+                Gravity.CENTER
+        );
+        heading.setBackground(
+                Ui.rounded(
+                        Ui.menuTint(accent),
+                        10,
+                        this
+                )
+        );
 
         LinearLayout.LayoutParams headingParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
+                        Ui.dp(this, 30)
                 );
         headingParams.bottomMargin =
                 Ui.dp(this, 8);
@@ -811,7 +825,7 @@ public class MainActivity extends Activity {
                         ViewGroup.LayoutParams.WRAP_CONTENT
                 );
         params.bottomMargin =
-                Ui.dp(this, 10);
+                Ui.dp(this, 12);
         return params;
     }
 
@@ -827,26 +841,14 @@ public class MainActivity extends Activity {
                 LinearLayout.VERTICAL
         );
 
-        LinearLayout parentRow =
-                new LinearLayout(this);
-        parentRow.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-        parentRow.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-        parentRow.setPadding(
-                Ui.dp(this, 13),
-                0,
-                Ui.dp(this, 9),
-                0
-        );
+        FrameLayout parentRow =
+                new FrameLayout(this);
         parentRow.setBackground(
                 Ui.roundedStroke(
-                        Ui.softAccent(accent),
-                        Color.TRANSPARENT,
-                        0,
-                        13,
+                        Ui.menuTint(accent),
+                        Ui.MENU_BORDER,
+                        1,
+                        12,
                         this
                 )
         );
@@ -855,42 +857,59 @@ public class MainActivity extends Activity {
                 Ui.text(
                         this,
                         category.name,
-                        15,
-                        accent == Ui.YELLOW
-                                ? Ui.NAVY
-                                : accent,
+                        14,
+                        Ui.menuAccentText(
+                                accent
+                        ),
                         true
                 );
+        label.setGravity(
+                Gravity.CENTER
+        );
+
+        FrameLayout.LayoutParams labelParams =
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Gravity.CENTER
+                );
+        labelParams.leftMargin =
+                Ui.dp(this, 34);
+        labelParams.rightMargin =
+                Ui.dp(this, 34);
 
         parentRow.addView(
                 label,
-                new LinearLayout.LayoutParams(
-                        0,
-                        Ui.dp(this, 44),
-                        1f
-                )
+                labelParams
         );
 
         TextView arrow =
                 Ui.text(
                         this,
                         "›",
-                        22,
-                        accent == Ui.YELLOW
-                                ? Ui.NAVY
-                                : accent,
+                        21,
+                        Ui.menuAccentText(
+                                accent
+                        ),
                         true
                 );
         arrow.setGravity(
                 Gravity.CENTER
         );
 
+        FrameLayout.LayoutParams arrowParams =
+                new FrameLayout.LayoutParams(
+                        Ui.dp(this, 30),
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Gravity.END |
+                        Gravity.CENTER_VERTICAL
+                );
+        arrowParams.rightMargin =
+                Ui.dp(this, 4);
+
         parentRow.addView(
                 arrow,
-                new LinearLayout.LayoutParams(
-                        Ui.dp(this, 28),
-                        Ui.dp(this, 44)
-                )
+                arrowParams
         );
 
         LinearLayout children =
@@ -902,10 +921,10 @@ public class MainActivity extends Activity {
                 View.GONE
         );
         children.setPadding(
-                Ui.dp(this, 18),
+                Ui.dp(this, 10),
                 Ui.dp(this, 6),
-                Ui.dp(this, 4),
-                Ui.dp(this, 2)
+                Ui.dp(this, 10),
+                0
         );
 
         final boolean[] loaded =
@@ -913,21 +932,25 @@ public class MainActivity extends Activity {
         final boolean[] loading =
                 new boolean[]{false};
 
-        Runnable toggle =
-                () -> {
+        parentRow.setOnClickListener(
+                view -> {
                     if (children.getVisibility() ==
                             View.VISIBLE) {
                         children.setVisibility(
                                 View.GONE
                         );
-                        arrow.setText("›");
+                        arrow.setText(
+                                "›"
+                        );
                         return;
                     }
 
                     children.setVisibility(
                             View.VISIBLE
                     );
-                    arrow.setText("⌄");
+                    arrow.setText(
+                            "⌄"
+                    );
 
                     if (loaded[0] ||
                             loading[0]) {
@@ -940,7 +963,7 @@ public class MainActivity extends Activity {
                     TextView loadingText =
                             categorySubMenuItem(
                                     "Chargement…",
-                                    Ui.MUTED,
+                                    Ui.MENU_MUTED,
                                     false
                             );
                     children.addView(
@@ -963,9 +986,9 @@ public class MainActivity extends Activity {
                                             categorySubMenuItem(
                                                     "Voir tout " +
                                                     category.name,
-                                                    accent == Ui.YELLOW
-                                                            ? Ui.NAVY
-                                                            : accent,
+                                                    Ui.menuAccentText(
+                                                            accent
+                                                    ),
                                                     true
                                             );
                                     all.setOnClickListener(
@@ -990,7 +1013,7 @@ public class MainActivity extends Activity {
                                         TextView none =
                                                 categorySubMenuItem(
                                                         "Aucune sous-catégorie",
-                                                        Ui.MUTED,
+                                                        Ui.MENU_MUTED,
                                                         false
                                                 );
                                         children.addView(
@@ -1005,7 +1028,7 @@ public class MainActivity extends Activity {
                                         TextView childItem =
                                                 categorySubMenuItem(
                                                         child.name,
-                                                        Ui.TEXT,
+                                                        Ui.MENU_TEXT,
                                                         false
                                                 );
                                         childItem.setOnClickListener(
@@ -1058,10 +1081,7 @@ public class MainActivity extends Activity {
                                 }
                             }
                     );
-                };
-
-        parentRow.setOnClickListener(
-                view -> toggle.run()
+                }
         );
 
         wrapper.addView(
@@ -1080,14 +1100,13 @@ public class MainActivity extends Activity {
                 )
         );
 
-        // CRITICAL FIX: wrapper must grow when children become visible.
         LinearLayout.LayoutParams wrapperParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                 );
         wrapperParams.bottomMargin =
-                Ui.dp(this, 7);
+                Ui.dp(this, 6);
 
         host.addView(
                 wrapper,
@@ -1104,25 +1123,19 @@ public class MainActivity extends Activity {
                 Ui.text(
                         this,
                         label,
-                        13,
+                        14,
                         color,
                         bold
                 );
         item.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
-        item.setPadding(
-                Ui.dp(this, 12),
-                0,
-                Ui.dp(this, 10),
-                0
+                Gravity.CENTER
         );
         item.setBackground(
                 Ui.roundedStroke(
-                        Color.WHITE,
-                        Ui.BORDER,
+                        Ui.MENU_ITEM,
+                        Ui.MENU_BORDER,
                         1,
-                        10,
+                        11,
                         this
                 )
         );
@@ -1133,7 +1146,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 38)
+                        Ui.dp(this, 44)
                 );
         params.bottomMargin =
                 Ui.dp(this, 5);
@@ -1144,41 +1157,28 @@ public class MainActivity extends Activity {
             String label,
             int accent
     ) {
-        int textColor =
-                accent == Ui.YELLOW
-                        ? Ui.NAVY
-                        : accent;
-
         TextView item =
                 Ui.text(
                         this,
                         label,
-                        15,
-                        textColor,
+                        14,
+                        Ui.menuAccentText(
+                                accent
+                        ),
                         true
                 );
-
         item.setGravity(
-                Gravity.CENTER_VERTICAL
+                Gravity.CENTER
         );
-
-        item.setPadding(
-                Ui.dp(this, 13),
-                0,
-                Ui.dp(this, 13),
-                0
-        );
-
         item.setBackground(
                 Ui.roundedStroke(
-                        Ui.softAccent(accent),
-                        Color.TRANSPARENT,
-                        0,
-                        13,
+                        Ui.MENU_ITEM,
+                        Ui.MENU_BORDER,
+                        1,
+                        12,
                         this
                 )
         );
-
         return item;
     }
 
@@ -1188,10 +1188,8 @@ public class MainActivity extends Activity {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         Ui.dp(this, 44)
                 );
-
         params.bottomMargin =
-                Ui.dp(this, 7);
-
+                Ui.dp(this, 6);
         return params;
     }
 

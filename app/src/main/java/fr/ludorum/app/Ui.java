@@ -25,6 +25,16 @@ final class Ui {
     static final int IVORY = Color.rgb(255, 250, 240);
     static final int GREEN = Color.rgb(24, 135, 84);
 
+    // Navigation drawer / menu palette:
+    // clean, calm and premium while keeping Ludorum's blue/yellow/red identity.
+    static final int MENU_CANVAS = Color.rgb(245, 248, 252);
+    static final int MENU_CARD = Color.rgb(255, 255, 255);
+    static final int MENU_ITEM = Color.rgb(250, 252, 255);
+    static final int MENU_TEXT = Color.rgb(17, 38, 68);
+    static final int MENU_MUTED = Color.rgb(105, 118, 137);
+    static final int MENU_BORDER = Color.rgb(218, 226, 238);
+    static final int MENU_GOLD_TEXT = Color.rgb(153, 98, 0);
+
     static int dp(Context c, int v) {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
@@ -90,6 +100,36 @@ final class Ui {
                 Color.green(color),
                 Color.blue(color)
         );
+    }
+
+    static int menuTint(int color) {
+        int red =
+                (Color.red(color) * 8 +
+                255 * 92) / 100;
+        int green =
+                (Color.green(color) * 8 +
+                255 * 92) / 100;
+        int blue =
+                (Color.blue(color) * 8 +
+                255 * 92) / 100;
+
+        return Color.rgb(
+                red,
+                green,
+                blue
+        );
+    }
+
+    static int menuAccentText(int color) {
+        if (color == YELLOW) {
+            return MENU_GOLD_TEXT;
+        }
+
+        if (color == MUTED) {
+            return MENU_MUTED;
+        }
+
+        return color;
     }
 
     static TextView text(Context c, String value, int sp, int color, boolean strong) {
