@@ -992,7 +992,7 @@ public class MainActivity extends Activity {
                                                 children.setVisibility(
                                                         View.GONE
                                                 );
-                                                toggle.run();
+                                                parentRow.performClick();
                                             }
                                     );
                                     children.addView(

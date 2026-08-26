@@ -405,7 +405,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.17"
+                " LudorumAndroid/1.1.18"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1095,7 +1095,7 @@ public class WebActivity extends Activity {
                                                 children.setVisibility(
                                                         View.GONE
                                                 );
-                                                toggle.run();
+                                                parentRow.performClick();
                                             }
                                     );
                                     children.addView(
