@@ -178,13 +178,13 @@ public class MainActivity extends Activity {
         logo.setImageResource(R.drawable.ludorum_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 
-        header.addView(
-                logo,
+        LinearLayout.LayoutParams logoParams =
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 64)
-                )
-        );
+                        Ui.dp(this, 178),
+                        Ui.dp(this, 48)
+                );
+        logoParams.gravity = Gravity.CENTER_HORIZONTAL;
+        header.addView(logo, logoParams);
 
         LinearLayout searchBox = new LinearLayout(this);
         searchBox.setOrientation(LinearLayout.HORIZONTAL);
@@ -810,6 +810,20 @@ public class MainActivity extends Activity {
         subParams.bottomMargin = Ui.dp(this, 16);
         content.addView(sub, subParams);
 
+        int activeCategoryId = categoryIdFromQuery(query);
+        if (activeCategoryId > 0) {
+            LinearLayout subcategoryHost = new LinearLayout(this);
+            subcategoryHost.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams categoryHostParams =
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    );
+            categoryHostParams.bottomMargin = Ui.dp(this, 14);
+            content.addView(subcategoryHost, categoryHostParams);
+            loadSubcategoryTabs(activeCategoryId, generation, subcategoryHost);
+        }
+
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         content.addView(grid);
@@ -877,6 +891,173 @@ public class MainActivity extends Activity {
                     }
                 }
         );
+    }
+
+    private int categoryIdFromQuery(String query) {
+        if (query == null || query.trim().isEmpty()) return 0;
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(?:^|[&?])category=([0-9]+)")
+                    .matcher(query);
+            if (matcher.find()) return Integer.parseInt(matcher.group(1));
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    private void loadSubcategoryTabs(
+            int activeCategoryId,
+            int generation,
+            LinearLayout host
+    ) {
+        ApiClient.getCategoryById(
+                activeCategoryId,
+                new ApiClient.Callback<ProductCategory>() {
+                    @Override
+                    public void onSuccess(ProductCategory active) {
+                        if (generation != screenGeneration) return;
+
+                        if (active.parent > 0) {
+                            ApiClient.getCategoryById(
+                                    active.parent,
+                                    new ApiClient.Callback<ProductCategory>() {
+                                        @Override
+                                        public void onSuccess(ProductCategory parent) {
+                                            if (generation != screenGeneration) return;
+                                            populateSubcategoryTabs(parent, active, generation, host);
+                                        }
+
+                                        @Override
+                                        public void onError(Exception error) {
+                                            host.setVisibility(View.GONE);
+                                        }
+                                    }
+                            );
+                            return;
+                        }
+
+                        populateSubcategoryTabs(active, active, generation, host);
+                    }
+
+                    @Override
+                    public void onError(Exception error) {
+                        host.setVisibility(View.GONE);
+                    }
+                }
+        );
+    }
+
+    private void populateSubcategoryTabs(
+            ProductCategory parent,
+            ProductCategory active,
+            int generation,
+            LinearLayout host
+    ) {
+        ApiClient.getChildCategories(
+                parent.id,
+                new ApiClient.Callback<List<ProductCategory>>() {
+                    @Override
+                    public void onSuccess(List<ProductCategory> children) {
+                        if (generation != screenGeneration) return;
+                        if (children == null || children.isEmpty()) {
+                            host.setVisibility(View.GONE);
+                            return;
+                        }
+
+                        host.removeAllViews();
+                        host.setVisibility(View.VISIBLE);
+
+                        TextView label = Ui.text(
+                                MainActivity.this,
+                                "Sous-catégories",
+                                12,
+                                Ui.MUTED,
+                                true
+                        );
+                        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                        );
+                        labelParams.bottomMargin = Ui.dp(MainActivity.this, 8);
+                        host.addView(label, labelParams);
+
+                        HorizontalScrollView horizontal = new HorizontalScrollView(MainActivity.this);
+                        horizontal.setHorizontalScrollBarEnabled(false);
+                        horizontal.setFillViewport(false);
+
+                        LinearLayout row = new LinearLayout(MainActivity.this);
+                        row.setOrientation(LinearLayout.HORIZONTAL);
+                        row.setPadding(0, 1, Ui.dp(MainActivity.this, 8), 1);
+                        horizontal.addView(row, new ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                        ));
+
+                        int[] accents = new int[]{Ui.BLUE, Ui.RED, Ui.YELLOW, Ui.NAVY};
+
+                        TextView all = subcategoryTab("Tous", active.id == parent.id, Ui.BLUE);
+                        all.setOnClickListener(view -> showCatalogue(
+                                parent.name,
+                                "Tous les produits de " + parent.name + ".",
+                                "&category=" + parent.id,
+                                1
+                        ));
+                        row.addView(all, subcategoryTabParams());
+
+                        int index = 0;
+                        for (ProductCategory child : children) {
+                            int accent = accents[index++ % accents.length];
+                            TextView tab = subcategoryTab(child.name, active.id == child.id, accent);
+                            tab.setOnClickListener(view -> showCatalogue(
+                                    child.name,
+                                    parent.name + " • " + child.name,
+                                    "&category=" + child.id,
+                                    1
+                            ));
+                            row.addView(tab, subcategoryTabParams());
+                        }
+
+                        host.addView(horizontal, new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                Ui.dp(MainActivity.this, 46)
+                        ));
+                    }
+
+                    @Override
+                    public void onError(Exception error) {
+                        host.setVisibility(View.GONE);
+                    }
+                }
+        );
+    }
+
+    private TextView subcategoryTab(
+            String label,
+            boolean active,
+            int accent
+    ) {
+        int textColor = active
+                ? (accent == Ui.YELLOW ? Ui.NAVY : Color.WHITE)
+                : (accent == Ui.YELLOW ? Ui.NAVY : accent);
+
+        TextView tab = Ui.pill(
+                this,
+                label,
+                textColor,
+                active ? accent : Color.WHITE,
+                accent
+        );
+        tab.setTextSize(13);
+        tab.setPadding(Ui.dp(this,14), Ui.dp(this,8), Ui.dp(this,14), Ui.dp(this,8));
+        return tab;
+    }
+
+    private LinearLayout.LayoutParams subcategoryTabParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Ui.dp(this, 40)
+        );
+        params.rightMargin = Ui.dp(this, 8);
+        return params;
     }
 
     private String ensureDefaultOrdering(String query) {

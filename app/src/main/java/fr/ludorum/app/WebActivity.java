@@ -191,8 +191,8 @@ public class WebActivity extends Activity {
         top.addView(
                 logo,
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 100),
-                        Ui.dp(this, 44)
+                        Ui.dp(this, 112),
+                        Ui.dp(this, 34)
                 )
         );
 
@@ -276,7 +276,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.7"
+                " LudorumAndroid/1.1.8"
         );
 
         CookieManager cookies = CookieManager.getInstance();

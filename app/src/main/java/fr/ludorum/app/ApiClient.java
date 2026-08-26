@@ -75,6 +75,18 @@ final class ApiClient {
     private static final Map<String, Long> CATEGORY_BY_SLUG_CACHE_TIME =
             new ConcurrentHashMap<>();
 
+    private static final Map<Integer, ProductCategory> CATEGORY_BY_ID_CACHE =
+            new ConcurrentHashMap<>();
+
+    private static final Map<Integer, Long> CATEGORY_BY_ID_CACHE_TIME =
+            new ConcurrentHashMap<>();
+
+    private static final Map<Integer, List<ProductCategory>> CHILD_CATEGORIES_CACHE =
+            new ConcurrentHashMap<>();
+
+    private static final Map<Integer, Long> CHILD_CATEGORIES_CACHE_TIME =
+            new ConcurrentHashMap<>();
+
     private static volatile List<ProductCategory> topCategoriesCache = null;
     private static volatile long topCategoriesCacheTime = 0L;
 
@@ -165,6 +177,48 @@ final class ApiClient {
                 key,
                 System.currentTimeMillis()
         );
+    }
+
+    private static ProductCategory getCachedCategoryById(
+            int id
+    ) {
+        Long time = CATEGORY_BY_ID_CACHE_TIME.get(id);
+        if (!fresh(time, CATEGORY_CACHE_MS)) {
+            CATEGORY_BY_ID_CACHE.remove(id);
+            CATEGORY_BY_ID_CACHE_TIME.remove(id);
+            return null;
+        }
+        return CATEGORY_BY_ID_CACHE.get(id);
+    }
+
+    private static void putCachedCategoryById(
+            ProductCategory value
+    ) {
+        if (value == null || value.id <= 0) return;
+        CATEGORY_BY_ID_CACHE.put(value.id, value);
+        CATEGORY_BY_ID_CACHE_TIME.put(value.id, System.currentTimeMillis());
+    }
+
+    private static List<ProductCategory> getCachedChildCategories(
+            int parentId
+    ) {
+        Long time = CHILD_CATEGORIES_CACHE_TIME.get(parentId);
+        if (!fresh(time, CATEGORY_CACHE_MS)) {
+            CHILD_CATEGORIES_CACHE.remove(parentId);
+            CHILD_CATEGORIES_CACHE_TIME.remove(parentId);
+            return null;
+        }
+        List<ProductCategory> cached = CHILD_CATEGORIES_CACHE.get(parentId);
+        return cached == null ? null : new ArrayList<>(cached);
+    }
+
+    private static void putCachedChildCategories(
+            int parentId,
+            List<ProductCategory> categories
+    ) {
+        if (parentId <= 0 || categories == null) return;
+        CHILD_CATEGORIES_CACHE.put(parentId, new ArrayList<>(categories));
+        CHILD_CATEGORIES_CACHE_TIME.put(parentId, System.currentTimeMillis());
     }
 
     private static List<ProductCategory> getCachedTopCategories() {
@@ -439,6 +493,10 @@ final class ApiClient {
                         category
                 );
 
+                putCachedCategoryById(
+                        category
+                );
+
                 MAIN.post(
                         () -> callback.onSuccess(category)
                 );
@@ -452,6 +510,102 @@ final class ApiClient {
                 if (connection != null) {
                     connection.disconnect();
                 }
+            }
+        });
+    }
+
+    static void getCategoryById(
+            int id,
+            Callback<ProductCategory> callback
+    ) {
+        if (id <= 0) {
+            MAIN.post(() -> callback.onError(new Exception("Catégorie invalide")));
+            return;
+        }
+
+        ProductCategory cached = getCachedCategoryById(id);
+        if (cached != null) {
+            MAIN.post(() -> callback.onSuccess(cached));
+            return;
+        }
+
+        EXECUTOR.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = open(STORE + "/products/categories/" + id);
+                int status = connection.getResponseCode();
+                if (status < 200 || status >= 300) throw new Exception("HTTP " + status);
+
+                ProductCategory category = ProductCategory.fromJson(
+                        new org.json.JSONObject(read(connection.getInputStream()))
+                );
+                if (category.id <= 0) throw new Exception("Catégorie introuvable");
+
+                putCachedCategoryById(category);
+                if (category.slug != null && !category.slug.trim().isEmpty()) {
+                    putCachedCategory("category:" + category.slug.trim(), category);
+                }
+                MAIN.post(() -> callback.onSuccess(category));
+            } catch (Exception error) {
+                MAIN.post(() -> callback.onError(error));
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        });
+    }
+
+    static void getChildCategories(
+            int parentId,
+            Callback<List<ProductCategory>> callback
+    ) {
+        if (parentId <= 0) {
+            MAIN.post(() -> callback.onSuccess(new ArrayList<>()));
+            return;
+        }
+
+        List<ProductCategory> cached = getCachedChildCategories(parentId);
+        if (cached != null) {
+            MAIN.post(() -> callback.onSuccess(cached));
+            return;
+        }
+
+        EXECUTOR.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = open(
+                        STORE + "/products/categories?per_page=100" +
+                        "&hide_empty=true&parent=" + parentId +
+                        "&orderby=name&order=asc"
+                );
+                int status = connection.getResponseCode();
+                if (status < 200 || status >= 300) throw new Exception("HTTP " + status);
+
+                JSONArray array = new JSONArray(read(connection.getInputStream()));
+                List<ProductCategory> categories = new ArrayList<>();
+                for (int i = 0; i < array.length(); i++) {
+                    if (array.optJSONObject(i) == null) continue;
+                    ProductCategory category = ProductCategory.fromJson(array.optJSONObject(i));
+                    if (category.id <= 0 || isHiddenCategory(category.name) || isHiddenCategory(category.slug)) continue;
+                    categories.add(category);
+                    putCachedCategoryById(category);
+                    if (category.slug != null && !category.slug.trim().isEmpty()) {
+                        putCachedCategory("category:" + category.slug.trim(), category);
+                    }
+                }
+
+                categories.sort((a,b) -> {
+                    int pa = childCategoryPriority(a.name);
+                    int pb = childCategoryPriority(b.name);
+                    if (pa != pb) return Integer.compare(pa,pb);
+                    return a.name.compareToIgnoreCase(b.name);
+                });
+
+                putCachedChildCategories(parentId, categories);
+                MAIN.post(() -> callback.onSuccess(new ArrayList<>(categories)));
+            } catch (Exception error) {
+                MAIN.post(() -> callback.onError(error));
+            } finally {
+                if (connection != null) connection.disconnect();
             }
         });
     }
@@ -497,6 +651,7 @@ final class ApiClient {
                         continue;
                     }
                     categories.add(category);
+                    putCachedCategoryById(category);
                 }
 
                 categories.sort(
@@ -540,6 +695,24 @@ final class ApiClient {
         return 10;
     }
 
+    private static int childCategoryPriority(String value) {
+        String normalized = normalize(value);
+        if (normalized.contains("famille") || normalized.contains("familial")) return 0;
+        if (normalized.contains("enfant")) return 1;
+        if (normalized.contains("ambiance")) return 2;
+        if (normalized.contains("strategie")) return 3;
+        if (normalized.contains("expert")) return 4;
+        if (normalized.contains("cooperatif")) return 5;
+        if (normalized.contains("deux joueurs") || normalized.contains("2 joueurs")) return 6;
+        if (normalized.contains("solo")) return 7;
+        if (normalized.contains("enquete") || normalized.contains("escape")) return 8;
+        if (normalized.contains("lorcana")) return 20;
+        if (normalized.contains("one piece")) return 21;
+        if (normalized.contains("pokemon")) return 22;
+        if (normalized.contains("riftbound") || normalized.contains("rift bound")) return 23;
+        return 100;
+    }
+
     private static String normalize(String value) {
         if (value == null) return "";
         return Normalizer.normalize(value, Normalizer.Form.NFD)
@@ -558,7 +731,7 @@ final class ApiClient {
         connection.setUseCaches(true);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Connection", "keep-alive");
-        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.7");
+        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.8");
         connection.setInstanceFollowRedirects(true);
         return connection;
     }
