@@ -782,7 +782,7 @@ public class MainActivity extends Activity {
         parentRow.setPadding(
                 Ui.dp(this, 13),
                 0,
-                Ui.dp(this, 10),
+                Ui.dp(this, 9),
                 0
         );
         parentRow.setBackground(
@@ -832,7 +832,7 @@ public class MainActivity extends Activity {
         parentRow.addView(
                 arrow,
                 new LinearLayout.LayoutParams(
-                        Ui.dp(this, 30),
+                        Ui.dp(this, 28),
                         Ui.dp(this, 44)
                 )
         );
@@ -842,45 +842,36 @@ public class MainActivity extends Activity {
         children.setOrientation(
                 LinearLayout.VERTICAL
         );
-        children.setPadding(
-                Ui.dp(this, 12),
-                Ui.dp(this, 4),
-                0,
-                Ui.dp(this, 2)
-        );
         children.setVisibility(
                 View.GONE
         );
+        children.setPadding(
+                Ui.dp(this, 18),
+                Ui.dp(this, 6),
+                Ui.dp(this, 4),
+                Ui.dp(this, 2)
+        );
 
         final boolean[] loaded =
-                new boolean[]{
-                        false
-                };
-
+                new boolean[]{false};
         final boolean[] loading =
-                new boolean[]{
-                        false
-                };
+                new boolean[]{false};
 
-        parentRow.setOnClickListener(
-                view -> {
+        Runnable toggle =
+                () -> {
                     if (children.getVisibility() ==
                             View.VISIBLE) {
                         children.setVisibility(
                                 View.GONE
                         );
-                        arrow.setText(
-                                "›"
-                        );
+                        arrow.setText("›");
                         return;
                     }
 
                     children.setVisibility(
                             View.VISIBLE
                     );
-                    arrow.setText(
-                            "⌄"
-                    );
+                    arrow.setText("⌄");
 
                     if (loaded[0] ||
                             loading[0]) {
@@ -908,10 +899,8 @@ public class MainActivity extends Activity {
                                 public void onSuccess(
                                         List<ProductCategory> subcategories
                                 ) {
-                                    loading[0] =
-                                            false;
-                                    loaded[0] =
-                                            true;
+                                    loading[0] = false;
+                                    loaded[0] = true;
                                     children.removeAllViews();
 
                                     TextView all =
@@ -923,7 +912,6 @@ public class MainActivity extends Activity {
                                                             : accent,
                                                     true
                                             );
-
                                     all.setOnClickListener(
                                             childView -> {
                                                 popup.dismiss();
@@ -936,7 +924,6 @@ public class MainActivity extends Activity {
                                                 );
                                             }
                                     );
-
                                     children.addView(
                                             all,
                                             categorySubMenuItemParams()
@@ -965,7 +952,6 @@ public class MainActivity extends Activity {
                                                         Ui.TEXT,
                                                         false
                                                 );
-
                                         childItem.setOnClickListener(
                                                 childView -> {
                                                     popup.dismiss();
@@ -980,7 +966,6 @@ public class MainActivity extends Activity {
                                                     );
                                                 }
                                         );
-
                                         children.addView(
                                                 childItem,
                                                 categorySubMenuItemParams()
@@ -992,8 +977,7 @@ public class MainActivity extends Activity {
                                 public void onError(
                                         Exception error
                                 ) {
-                                    loading[0] =
-                                            false;
+                                    loading[0] = false;
                                     children.removeAllViews();
 
                                     TextView retry =
@@ -1004,15 +988,13 @@ public class MainActivity extends Activity {
                                             );
                                     retry.setOnClickListener(
                                             childView -> {
-                                                loaded[0] =
-                                                        false;
+                                                loaded[0] = false;
                                                 children.setVisibility(
                                                         View.GONE
                                                 );
-                                                parentRow.performClick();
+                                                toggle.run();
                                             }
                                     );
-
                                     children.addView(
                                             retry,
                                             categorySubMenuItemParams()
@@ -1020,7 +1002,10 @@ public class MainActivity extends Activity {
                                 }
                             }
                     );
-                }
+                };
+
+        parentRow.setOnClickListener(
+                view -> toggle.run()
         );
 
         wrapper.addView(
@@ -1039,9 +1024,18 @@ public class MainActivity extends Activity {
                 )
         );
 
+        // CRITICAL FIX: wrapper must grow when children become visible.
+        LinearLayout.LayoutParams wrapperParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        wrapperParams.bottomMargin =
+                Ui.dp(this, 7);
+
         host.addView(
                 wrapper,
-                catalogueMenuItemParams()
+                wrapperParams
         );
     }
 
@@ -1054,7 +1048,7 @@ public class MainActivity extends Activity {
                 Ui.text(
                         this,
                         label,
-                        14,
+                        13,
                         color,
                         bold
                 );
@@ -1072,7 +1066,7 @@ public class MainActivity extends Activity {
                         Color.WHITE,
                         Ui.BORDER,
                         1,
-                        11,
+                        10,
                         this
                 )
         );
@@ -1083,7 +1077,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 40)
+                        Ui.dp(this, 38)
                 );
         params.bottomMargin =
                 Ui.dp(this, 5);
