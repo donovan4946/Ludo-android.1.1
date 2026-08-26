@@ -502,28 +502,11 @@ public class MainActivity extends Activity {
                             accents.length
                     ];
 
-            TextView item =
-                    catalogueMenuItem(
-                            category.name,
-                            accent
-                    );
-
-            item.setOnClickListener(
-                    view -> {
-                        popup.dismiss();
-                        showCatalogue(
-                                category.name,
-                                "Parcourez cette catégorie du catalogue.",
-                                "&category=" +
-                                category.id,
-                                1
-                        );
-                    }
-            );
-
-            shopBlock.addView(
-                    item,
-                    catalogueMenuItemParams()
+            addExpandableCatalogueCategory(
+                    shopBlock,
+                    category,
+                    accent,
+                    popup
             );
         }
 
@@ -773,6 +756,337 @@ public class MainActivity extends Activity {
                 );
         params.bottomMargin =
                 Ui.dp(this, 10);
+        return params;
+    }
+
+    private void addExpandableCatalogueCategory(
+            LinearLayout host,
+            ProductCategory category,
+            int accent,
+            PopupWindow popup
+    ) {
+        LinearLayout wrapper =
+                new LinearLayout(this);
+        wrapper.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        LinearLayout parentRow =
+                new LinearLayout(this);
+        parentRow.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+        parentRow.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+        parentRow.setPadding(
+                Ui.dp(this, 13),
+                0,
+                Ui.dp(this, 10),
+                0
+        );
+        parentRow.setBackground(
+                Ui.roundedStroke(
+                        Ui.softAccent(accent),
+                        Color.TRANSPARENT,
+                        0,
+                        13,
+                        this
+                )
+        );
+
+        TextView label =
+                Ui.text(
+                        this,
+                        category.name,
+                        15,
+                        accent == Ui.YELLOW
+                                ? Ui.NAVY
+                                : accent,
+                        true
+                );
+
+        parentRow.addView(
+                label,
+                new LinearLayout.LayoutParams(
+                        0,
+                        Ui.dp(this, 44),
+                        1f
+                )
+        );
+
+        TextView arrow =
+                Ui.text(
+                        this,
+                        "›",
+                        22,
+                        accent == Ui.YELLOW
+                                ? Ui.NAVY
+                                : accent,
+                        true
+                );
+        arrow.setGravity(
+                Gravity.CENTER
+        );
+
+        parentRow.addView(
+                arrow,
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 30),
+                        Ui.dp(this, 44)
+                )
+        );
+
+        LinearLayout children =
+                new LinearLayout(this);
+        children.setOrientation(
+                LinearLayout.VERTICAL
+        );
+        children.setPadding(
+                Ui.dp(this, 12),
+                Ui.dp(this, 4),
+                0,
+                Ui.dp(this, 2)
+        );
+        children.setVisibility(
+                View.GONE
+        );
+
+        final boolean[] loaded =
+                new boolean[]{
+                        false
+                };
+
+        final boolean[] loading =
+                new boolean[]{
+                        false
+                };
+
+        parentRow.setOnClickListener(
+                view -> {
+                    if (children.getVisibility() ==
+                            View.VISIBLE) {
+                        children.setVisibility(
+                                View.GONE
+                        );
+                        arrow.setText(
+                                "›"
+                        );
+                        return;
+                    }
+
+                    children.setVisibility(
+                            View.VISIBLE
+                    );
+                    arrow.setText(
+                            "⌄"
+                    );
+
+                    if (loaded[0] ||
+                            loading[0]) {
+                        return;
+                    }
+
+                    loading[0] = true;
+                    children.removeAllViews();
+
+                    TextView loadingText =
+                            categorySubMenuItem(
+                                    "Chargement…",
+                                    Ui.MUTED,
+                                    false
+                            );
+                    children.addView(
+                            loadingText,
+                            categorySubMenuItemParams()
+                    );
+
+                    ApiClient.getChildCategories(
+                            category.id,
+                            new ApiClient.Callback<List<ProductCategory>>() {
+                                @Override
+                                public void onSuccess(
+                                        List<ProductCategory> subcategories
+                                ) {
+                                    loading[0] =
+                                            false;
+                                    loaded[0] =
+                                            true;
+                                    children.removeAllViews();
+
+                                    TextView all =
+                                            categorySubMenuItem(
+                                                    "Voir tout " +
+                                                    category.name,
+                                                    accent == Ui.YELLOW
+                                                            ? Ui.NAVY
+                                                            : accent,
+                                                    true
+                                            );
+
+                                    all.setOnClickListener(
+                                            childView -> {
+                                                popup.dismiss();
+                                                showCatalogue(
+                                                        category.name,
+                                                        "Parcourez cette catégorie du catalogue.",
+                                                        "&category=" +
+                                                        category.id,
+                                                        1
+                                                );
+                                            }
+                                    );
+
+                                    children.addView(
+                                            all,
+                                            categorySubMenuItemParams()
+                                    );
+
+                                    if (subcategories == null ||
+                                            subcategories.isEmpty()) {
+                                        TextView none =
+                                                categorySubMenuItem(
+                                                        "Aucune sous-catégorie",
+                                                        Ui.MUTED,
+                                                        false
+                                                );
+                                        children.addView(
+                                                none,
+                                                categorySubMenuItemParams()
+                                        );
+                                        return;
+                                    }
+
+                                    for (ProductCategory child :
+                                            subcategories) {
+                                        TextView childItem =
+                                                categorySubMenuItem(
+                                                        child.name,
+                                                        Ui.TEXT,
+                                                        false
+                                                );
+
+                                        childItem.setOnClickListener(
+                                                childView -> {
+                                                    popup.dismiss();
+                                                    showCatalogue(
+                                                            child.name,
+                                                            category.name +
+                                                            " • " +
+                                                            child.name,
+                                                            "&category=" +
+                                                            child.id,
+                                                            1
+                                                    );
+                                                }
+                                        );
+
+                                        children.addView(
+                                                childItem,
+                                                categorySubMenuItemParams()
+                                        );
+                                    }
+                                }
+
+                                @Override
+                                public void onError(
+                                        Exception error
+                                ) {
+                                    loading[0] =
+                                            false;
+                                    children.removeAllViews();
+
+                                    TextView retry =
+                                            categorySubMenuItem(
+                                                    "Réessayer",
+                                                    Ui.RED,
+                                                    true
+                                            );
+                                    retry.setOnClickListener(
+                                            childView -> {
+                                                loaded[0] =
+                                                        false;
+                                                children.setVisibility(
+                                                        View.GONE
+                                                );
+                                                parentRow.performClick();
+                                            }
+                                    );
+
+                                    children.addView(
+                                            retry,
+                                            categorySubMenuItemParams()
+                                    );
+                                }
+                            }
+                    );
+                }
+        );
+
+        wrapper.addView(
+                parentRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
+                )
+        );
+
+        wrapper.addView(
+                children,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+        );
+
+        host.addView(
+                wrapper,
+                catalogueMenuItemParams()
+        );
+    }
+
+    private TextView categorySubMenuItem(
+            String label,
+            int color,
+            boolean bold
+    ) {
+        TextView item =
+                Ui.text(
+                        this,
+                        label,
+                        14,
+                        color,
+                        bold
+                );
+        item.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+        item.setPadding(
+                Ui.dp(this, 12),
+                0,
+                Ui.dp(this, 10),
+                0
+        );
+        item.setBackground(
+                Ui.roundedStroke(
+                        Color.WHITE,
+                        Ui.BORDER,
+                        1,
+                        11,
+                        this
+                )
+        );
+        return item;
+    }
+
+    private LinearLayout.LayoutParams categorySubMenuItemParams() {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 40)
+                );
+        params.bottomMargin =
+                Ui.dp(this, 5);
         return params;
     }
 
