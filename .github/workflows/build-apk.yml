@@ -1,4 +1,4 @@
-*name: Build Ludorum Android APK
+name: Build Ludorum Android APK
 
 on:
   workflow_dispatch:
