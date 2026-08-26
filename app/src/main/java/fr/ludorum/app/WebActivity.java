@@ -48,6 +48,8 @@ public class WebActivity extends Activity {
     private static final String ACCOUNT = BASE + "/mon-compte/";
     private static final String FAVORITES = BASE + "/favoris/";
     private static final String CART = BASE + "/panier/";
+    private static final String LUDOMATCH = BASE + "/ludomatch/";
+    private static final String LUDOMATCH_GROUP = BASE + "/ludomatch-groupe/";
     private static final String CONTACT = BASE + "/contact/";
     private static final String SUGGEST_PRODUCT = BASE + "/suggerer-un-produit/";
     private static final String LEGAL = BASE + "/mentions-legales/";
@@ -405,7 +407,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.18"
+                " LudorumAndroid/1.1.19"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -629,7 +631,61 @@ public class WebActivity extends Activity {
                 topMenuSectionParams()
         );
 
-        // 2) VOTRE ESPACE
+        // 2) LUDOMATCH
+        LinearLayout ludoMatchBlock =
+                topMenuSectionBlock(
+                        "LudoMatch",
+                        Ui.YELLOW
+                );
+
+        TextView ludoMatch =
+                topMenuItem(
+                        "LudoMatch",
+                        Ui.BLUE
+                );
+
+        ludoMatch.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    web.loadUrl(
+                            LUDOMATCH
+                    );
+                }
+        );
+
+        ludoMatchBlock.addView(
+                ludoMatch,
+                topMenuItemParams()
+        );
+
+        TextView ludoMatchGroup =
+                topMenuItem(
+                        "LudoMatch Groupe",
+                        Ui.RED
+                );
+
+        ludoMatchGroup.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    web.loadUrl(
+                            LUDOMATCH_GROUP
+                    );
+                }
+        );
+
+        ludoMatchBlock.addView(
+                ludoMatchGroup,
+                topMenuItemParams()
+        );
+
+        panel.addView(
+                ludoMatchBlock,
+                topMenuSectionParams()
+        );
+
+        // 3) VOTRE ESPACE
         LinearLayout accountBlock =
                 topMenuSectionBlock(
                         "Votre espace",
@@ -696,7 +752,7 @@ public class WebActivity extends Activity {
                 topMenuSectionParams()
         );
 
-        // 3) AIDE & INFORMATIONS
+        // 4) AIDE & INFORMATIONS
         LinearLayout infoBlock =
                 topMenuSectionBlock(
                         "Aide & informations",

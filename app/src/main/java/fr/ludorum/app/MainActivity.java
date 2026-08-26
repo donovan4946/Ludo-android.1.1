@@ -533,7 +533,63 @@ public class MainActivity extends Activity {
                 menuSectionParams()
         );
 
-        // 2) VOTRE ESPACE
+        // 2) LUDOMATCH
+        LinearLayout ludoMatchBlock =
+                menuSectionBlock(
+                        "LudoMatch",
+                        Ui.YELLOW
+                );
+
+        TextView ludoMatch =
+                catalogueMenuItem(
+                        "LudoMatch",
+                        Ui.BLUE
+                );
+
+        ludoMatch.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    openWeb(
+                            LUDOMATCH,
+                            "LudoMatch"
+                    );
+                }
+        );
+
+        ludoMatchBlock.addView(
+                ludoMatch,
+                catalogueMenuItemParams()
+        );
+
+        TextView ludoMatchGroup =
+                catalogueMenuItem(
+                        "LudoMatch Groupe",
+                        Ui.RED
+                );
+
+        ludoMatchGroup.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+
+                    openWeb(
+                            LUDOMATCH_GROUP,
+                            "LudoMatch Groupe"
+                    );
+                }
+        );
+
+        ludoMatchBlock.addView(
+                ludoMatchGroup,
+                catalogueMenuItemParams()
+        );
+
+        panel.addView(
+                ludoMatchBlock,
+                menuSectionParams()
+        );
+
+        // 3) VOTRE ESPACE
         LinearLayout accountBlock =
                 menuSectionBlock(
                         "Votre espace",
@@ -580,7 +636,7 @@ public class MainActivity extends Activity {
                 menuSectionParams()
         );
 
-        // 3) AIDE & INFORMATIONS
+        // 4) AIDE & INFORMATIONS
         LinearLayout infoBlock =
                 menuSectionBlock(
                         "Aide & informations",
