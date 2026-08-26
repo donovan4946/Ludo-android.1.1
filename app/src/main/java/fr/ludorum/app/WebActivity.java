@@ -27,6 +27,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
@@ -46,6 +47,10 @@ public class WebActivity extends Activity {
     private static final String ACCOUNT = BASE + "/mon-compte/";
     private static final String FAVORITES = BASE + "/favoris/";
     private static final String CART = BASE + "/panier/";
+    private static final String CONTACT = BASE + "/contact/";
+    private static final String SUGGEST_PRODUCT = BASE + "/suggerer-un-produit/";
+    private static final String LEGAL = BASE + "/mentions-legales/";
+    private static final String PRIVACY = BASE + "/politique-de-confidentialite/";
 
     private WebView web;
     private ProgressBar progress;
@@ -116,8 +121,25 @@ public class WebActivity extends Activity {
     }
 
     private void configureSystemBars() {
-        getWindow().setStatusBarColor(Color.WHITE);
-        getWindow().setNavigationBarColor(Ui.NAVY);
+        getWindow().setStatusBarColor(
+                Color.WHITE
+        );
+        getWindow().setNavigationBarColor(
+                Ui.NAVY
+        );
+
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            getWindow().setNavigationBarDividerColor(
+                    Ui.NAVY
+            );
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            getWindow().setNavigationBarContrastEnforced(
+                    false
+            );
+        }
+
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         );
@@ -132,7 +154,7 @@ public class WebActivity extends Activity {
                 0,
                 Ui.topSystemSpace(this),
                 0,
-                Ui.bottomSystemSpace(this)
+                0
         );
 
         LinearLayout top =
@@ -382,7 +404,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.13"
+                " LudorumAndroid/1.1.14"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -411,12 +433,34 @@ public class WebActivity extends Activity {
                 )
         );
 
+        View systemNavigationShield =
+                new View(this);
+        systemNavigationShield.setBackgroundColor(
+                Ui.NAVY
+        );
+
+        root.addView(
+                systemNavigationShield,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Math.max(
+                                Ui.dp(this, 1),
+                                Ui.bottomSystemSpace(this)
+                        )
+                )
+        );
+
         setContentView(root);
     }
 
     private void openTopMenu(
             View anchor
     ) {
+        ScrollView scroller =
+                new ScrollView(this);
+        scroller.setFillViewport(true);
+        scroller.setVerticalScrollBarEnabled(false);
+
         LinearLayout panel =
                 new LinearLayout(this);
         panel.setOrientation(
@@ -428,34 +472,16 @@ public class WebActivity extends Activity {
                 Ui.dp(this, 12),
                 Ui.dp(this, 12)
         );
-        panel.setBackground(
-                Ui.roundedStroke(
-                        Color.WHITE,
-                        Ui.BORDER,
-                        1,
-                        18,
-                        this
-                )
+        panel.setBackgroundColor(
+                Color.WHITE
         );
 
-        TextView heading =
-                Ui.text(
-                        this,
-                        "Menu",
-                        17,
-                        Ui.NAVY,
-                        true
-                );
-        LinearLayout.LayoutParams headingParams =
-                new LinearLayout.LayoutParams(
+        scroller.addView(
+                panel,
+                new ScrollView.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-        headingParams.bottomMargin =
-                Ui.dp(this, 9);
-        panel.addView(
-                heading,
-                headingParams
+                )
         );
 
         int popupWidth =
@@ -463,25 +489,155 @@ public class WebActivity extends Activity {
                         getResources()
                                 .getDisplayMetrics()
                                 .widthPixels -
-                        Ui.dp(this, 30),
-                        Ui.dp(this, 286)
+                        Ui.dp(this, 24),
+                        Ui.dp(this, 310)
+                );
+
+        int popupHeight =
+                Math.min(
+                        (int) (
+                                getResources()
+                                        .getDisplayMetrics()
+                                        .heightPixels *
+                                0.76f
+                        ),
+                        Ui.dp(this, 640)
                 );
 
         PopupWindow popup =
                 new PopupWindow(
-                        panel,
+                        scroller,
                         popupWidth,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        popupHeight,
                         true
                 );
         popup.setBackgroundDrawable(
                 new ColorDrawable(
-                        Color.TRANSPARENT
+                        Color.WHITE
                 )
         );
         popup.setOutsideTouchable(true);
         popup.setElevation(
-                Ui.dp(this, 12)
+                Ui.dp(this, 14)
+        );
+
+        // 1) BOUTIQUE & ARTICLES
+        LinearLayout shopBlock =
+                topMenuSectionBlock(
+                        "Boutique & articles",
+                        Ui.BLUE
+                );
+
+        TextView shop =
+                topMenuItem(
+                        "Boutique",
+                        Ui.BLUE
+                );
+        shop.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "shop",
+                            null,
+                            null
+                    );
+                }
+        );
+        shopBlock.addView(
+                shop,
+                topMenuItemParams()
+        );
+
+        TextView boardGames =
+                topMenuItem(
+                        "Jeux de société",
+                        Ui.BLUE
+                );
+        boardGames.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "category",
+                            "category_slug",
+                            "jeux-de-societe"
+                    );
+                }
+        );
+        shopBlock.addView(
+                boardGames,
+                topMenuItemParams()
+        );
+
+        TextView cards =
+                topMenuItem(
+                        "Jeux de cartes",
+                        Ui.RED
+                );
+        cards.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "category",
+                            "category_slug",
+                            "jeux-de-cartes"
+                    );
+                }
+        );
+        shopBlock.addView(
+                cards,
+                topMenuItemParams()
+        );
+
+        TextView accessories =
+                topMenuItem(
+                        "Accessoires",
+                        Ui.YELLOW
+                );
+        accessories.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "category",
+                            "category_slug",
+                            "accessoires"
+                    );
+                }
+        );
+        shopBlock.addView(
+                accessories,
+                topMenuItemParams()
+        );
+
+        panel.addView(
+                shopBlock,
+                topMenuSectionParams()
+        );
+
+        // 2) VOTRE ESPACE
+        LinearLayout accountBlock =
+                topMenuSectionBlock(
+                        "Votre espace",
+                        Ui.RED
+                );
+
+        TextView favorites =
+                topMenuItem(
+                        "Favoris",
+                        Ui.RED
+                );
+        favorites.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openNativeScreen(
+                            "favorites",
+                            null,
+                            null
+                    );
+                }
+        );
+        accountBlock.addView(
+                favorites,
+                topMenuItemParams()
         );
 
         TextView account =
@@ -514,49 +670,116 @@ public class WebActivity extends Activity {
                     }
                 }
         );
-        panel.addView(
+        accountBlock.addView(
                 account,
                 topMenuItemParams()
         );
 
-        TextView favorites =
+        panel.addView(
+                accountBlock,
+                topMenuSectionParams()
+        );
+
+        // 3) AIDE & INFORMATIONS
+        LinearLayout infoBlock =
+                topMenuSectionBlock(
+                        "Aide & informations",
+                        Ui.NAVY
+                );
+
+        TextView bug =
                 topMenuItem(
-                        "Favoris",
+                        "Signaler un bug",
                         Ui.RED
                 );
-        favorites.setOnClickListener(
+        bug.setOnClickListener(
                 view -> {
                     popup.dismiss();
-                    openNativeScreen(
-                            "favorites",
-                            null,
-                            null
+                    web.loadUrl(
+                            CONTACT
                     );
                 }
         );
-        panel.addView(
-                favorites,
+        infoBlock.addView(
+                bug,
                 topMenuItemParams()
         );
 
-        TextView shop =
+        TextView contact =
                 topMenuItem(
-                        "Boutique",
+                        "Nous contacter",
                         Ui.BLUE
                 );
-        shop.setOnClickListener(
+        contact.setOnClickListener(
                 view -> {
                     popup.dismiss();
-                    openNativeScreen(
-                            "shop",
-                            null,
-                            null
+                    web.loadUrl(
+                            CONTACT
                     );
                 }
         );
-        panel.addView(
-                shop,
+        infoBlock.addView(
+                contact,
                 topMenuItemParams()
+        );
+
+        TextView suggest =
+                topMenuItem(
+                        "Suggérer un produit",
+                        Ui.YELLOW
+                );
+        suggest.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    web.loadUrl(
+                            SUGGEST_PRODUCT
+                    );
+                }
+        );
+        infoBlock.addView(
+                suggest,
+                topMenuItemParams()
+        );
+
+        TextView legal =
+                topMenuItem(
+                        "Mentions légales",
+                        Ui.NAVY
+                );
+        legal.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    web.loadUrl(
+                            LEGAL
+                    );
+                }
+        );
+        infoBlock.addView(
+                legal,
+                topMenuItemParams()
+        );
+
+        TextView privacy =
+                topMenuItem(
+                        "Politique de confidentialité",
+                        Ui.NAVY
+                );
+        privacy.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    web.loadUrl(
+                            PRIVACY
+                    );
+                }
+        );
+        infoBlock.addView(
+                privacy,
+                topMenuItemParams()
+        );
+
+        panel.addView(
+                infoBlock,
+                topMenuSectionParams()
         );
 
         popup.showAsDropDown(
@@ -564,6 +787,71 @@ public class WebActivity extends Activity {
                 0,
                 Ui.dp(this, 3)
         );
+    }
+
+    private LinearLayout topMenuSectionBlock(
+            String title,
+            int accent
+    ) {
+        LinearLayout block =
+                new LinearLayout(this);
+        block.setOrientation(
+                LinearLayout.VERTICAL
+        );
+        block.setPadding(
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 5)
+        );
+        block.setBackground(
+                Ui.roundedStroke(
+                        Ui.softAccent(accent),
+                        Ui.BORDER,
+                        1,
+                        16,
+                        this
+                )
+        );
+
+        TextView heading =
+                Ui.text(
+                        this,
+                        title.toUpperCase(
+                                java.util.Locale.ROOT
+                        ),
+                        10,
+                        accent == Ui.YELLOW
+                                ? Ui.NAVY
+                                : accent,
+                        true
+                );
+
+        LinearLayout.LayoutParams headingParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        headingParams.bottomMargin =
+                Ui.dp(this, 8);
+
+        block.addView(
+                heading,
+                headingParams
+        );
+
+        return block;
+    }
+
+    private LinearLayout.LayoutParams topMenuSectionParams() {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        params.bottomMargin =
+                Ui.dp(this, 10);
+        return params;
     }
 
     private TextView topMenuItem(

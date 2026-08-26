@@ -46,6 +46,10 @@ public class MainActivity extends Activity {
     private static final String CHECKOUT = BASE + "/commande/";
     private static final String LUDOMATCH = BASE + "/ludomatch/";
     private static final String LUDOMATCH_GROUP = BASE + "/ludomatch-groupe/";
+    private static final String CONTACT = BASE + "/contact/";
+    private static final String SUGGEST_PRODUCT = BASE + "/suggerer-un-produit/";
+    private static final String LEGAL = BASE + "/mentions-legales/";
+    private static final String PRIVACY = BASE + "/politique-de-confidentialite/";
 
     private LinearLayout root;
     private LinearLayout content;
@@ -122,8 +126,25 @@ public class MainActivity extends Activity {
     }
 
     private void configureSystemBars() {
-        getWindow().setStatusBarColor(Color.WHITE);
-        getWindow().setNavigationBarColor(Ui.NAVY);
+        getWindow().setStatusBarColor(
+                Color.WHITE
+        );
+        getWindow().setNavigationBarColor(
+                Ui.NAVY
+        );
+
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            getWindow().setNavigationBarDividerColor(
+                    Ui.NAVY
+            );
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            getWindow().setNavigationBarContrastEnforced(
+                    false
+            );
+        }
+
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         );
@@ -148,6 +169,23 @@ public class MainActivity extends Activity {
         );
 
         buildContent();
+
+        View systemNavigationShield =
+                new View(this);
+        systemNavigationShield.setBackgroundColor(
+                Ui.NAVY
+        );
+
+        root.addView(
+                systemNavigationShield,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Math.max(
+                                Ui.dp(this, 1),
+                                Ui.bottomSystemSpace(this)
+                        )
+                )
+        );
 
         setContentView(root);
     }
@@ -351,55 +389,32 @@ public class MainActivity extends Activity {
     private void openCatalogueMenu(
             View anchor
     ) {
+        ScrollView scroller =
+                new ScrollView(this);
+        scroller.setFillViewport(true);
+        scroller.setVerticalScrollBarEnabled(false);
+
         LinearLayout panel =
                 new LinearLayout(this);
-
         panel.setOrientation(
                 LinearLayout.VERTICAL
         );
-
         panel.setPadding(
                 Ui.dp(this, 12),
                 Ui.dp(this, 12),
                 Ui.dp(this, 12),
                 Ui.dp(this, 12)
         );
-
-        panel.setBackground(
-                Ui.roundedStroke(
-                        Color.WHITE,
-                        Ui.BORDER,
-                        1,
-                        18,
-                        this
-                )
+        panel.setBackgroundColor(
+                Color.WHITE
         );
 
-        panel.setElevation(
-                Ui.dp(this, 12)
-        );
-
-        TextView title =
-                Ui.text(
-                        this,
-                        "Catalogue",
-                        17,
-                        Ui.NAVY,
-                        true
-                );
-
-        LinearLayout.LayoutParams titleParams =
-                new LinearLayout.LayoutParams(
+        scroller.addView(
+                panel,
+                new ScrollView.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-
-        titleParams.bottomMargin =
-                Ui.dp(this, 9);
-
-        panel.addView(
-                title,
-                titleParams
+                )
         );
 
         int popupWidth =
@@ -407,98 +422,53 @@ public class MainActivity extends Activity {
                         getResources()
                                 .getDisplayMetrics()
                                 .widthPixels -
-                        Ui.dp(this, 30),
-                        Ui.dp(this, 286)
+                        Ui.dp(this, 24),
+                        Ui.dp(this, 310)
+                );
+
+        int popupHeight =
+                Math.min(
+                        (int) (
+                                getResources()
+                                        .getDisplayMetrics()
+                                        .heightPixels *
+                                0.76f
+                        ),
+                        Ui.dp(this, 640)
                 );
 
         PopupWindow popup =
                 new PopupWindow(
-                        panel,
+                        scroller,
                         popupWidth,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        popupHeight,
                         true
                 );
-
         popup.setBackgroundDrawable(
                 new ColorDrawable(
-                        Color.TRANSPARENT
+                        Color.WHITE
                 )
         );
-
-        popup.setOutsideTouchable(
-                true
-        );
-
+        popup.setOutsideTouchable(true);
         popup.setElevation(
-                Ui.dp(this, 12)
+                Ui.dp(this, 14)
         );
 
-        TextView account =
-                catalogueMenuItem(
-                        "Mon compte",
-                        Ui.YELLOW
+        // 1) BOUTIQUE & ARTICLES
+        LinearLayout shopBlock =
+                menuSectionBlock(
+                        "Boutique & articles",
+                        Ui.BLUE
                 );
-        account.setOnClickListener(
-                view -> {
-                    popup.dismiss();
-                    openWeb(
-                            ACCOUNT,
-                            "Mon compte"
-                    );
-                }
-        );
-        panel.addView(
-                account,
-                catalogueMenuItemParams()
-        );
-
-        TextView favorites =
-                catalogueMenuItem(
-                        "Favoris",
-                        Ui.RED
-                );
-        favorites.setOnClickListener(
-                view -> {
-                    popup.dismiss();
-                    showFavorites();
-                }
-        );
-        panel.addView(
-                favorites,
-                catalogueMenuItemParams()
-        );
-
-        View separator =
-                new View(this);
-        separator.setBackgroundColor(
-                Ui.BORDER
-        );
-
-        LinearLayout.LayoutParams separatorParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(this, 1)
-                );
-        separatorParams.topMargin =
-                Ui.dp(this, 4);
-        separatorParams.bottomMargin =
-                Ui.dp(this, 10);
-
-        panel.addView(
-                separator,
-                separatorParams
-        );
 
         TextView shop =
                 catalogueMenuItem(
                         "Boutique",
                         Ui.BLUE
                 );
-
         shop.setOnClickListener(
                 view -> {
                     popup.dismiss();
-
                     showCatalogue(
                             "Boutique",
                             "Tous les produits Ludorum.",
@@ -507,8 +477,7 @@ public class MainActivity extends Activity {
                     );
                 }
         );
-
-        panel.addView(
+        shopBlock.addView(
                 shop,
                 catalogueMenuItemParams()
         );
@@ -542,7 +511,6 @@ public class MainActivity extends Activity {
             item.setOnClickListener(
                     view -> {
                         popup.dismiss();
-
                         showCatalogue(
                                 category.name,
                                 "Parcourez cette catégorie du catalogue.",
@@ -553,7 +521,7 @@ public class MainActivity extends Activity {
                     }
             );
 
-            panel.addView(
+            shopBlock.addView(
                     item,
                     catalogueMenuItemParams()
             );
@@ -568,24 +536,244 @@ public class MainActivity extends Activity {
                             Ui.MUTED,
                             false
                     );
-
             loading.setPadding(
-                    Ui.dp(this, 11),
-                    Ui.dp(this, 9),
-                    Ui.dp(this, 11),
-                    Ui.dp(this, 9)
+                    Ui.dp(this, 12),
+                    Ui.dp(this, 8),
+                    Ui.dp(this, 12),
+                    Ui.dp(this, 8)
             );
-
-            panel.addView(
-                    loading
-            );
+            shopBlock.addView(loading);
         }
+
+        panel.addView(
+                shopBlock,
+                menuSectionParams()
+        );
+
+        // 2) VOTRE ESPACE
+        LinearLayout accountBlock =
+                menuSectionBlock(
+                        "Votre espace",
+                        Ui.RED
+                );
+
+        TextView favorites =
+                catalogueMenuItem(
+                        "Favoris",
+                        Ui.RED
+                );
+        favorites.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    showFavorites();
+                }
+        );
+        accountBlock.addView(
+                favorites,
+                catalogueMenuItemParams()
+        );
+
+        TextView account =
+                catalogueMenuItem(
+                        "Mon compte",
+                        Ui.YELLOW
+                );
+        account.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            ACCOUNT,
+                            "Mon compte"
+                    );
+                }
+        );
+        accountBlock.addView(
+                account,
+                catalogueMenuItemParams()
+        );
+
+        panel.addView(
+                accountBlock,
+                menuSectionParams()
+        );
+
+        // 3) AIDE & INFORMATIONS
+        LinearLayout infoBlock =
+                menuSectionBlock(
+                        "Aide & informations",
+                        Ui.NAVY
+                );
+
+        TextView bug =
+                catalogueMenuItem(
+                        "Signaler un bug",
+                        Ui.RED
+                );
+        bug.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            CONTACT,
+                            "Signaler un bug"
+                    );
+                }
+        );
+        infoBlock.addView(
+                bug,
+                catalogueMenuItemParams()
+        );
+
+        TextView contact =
+                catalogueMenuItem(
+                        "Nous contacter",
+                        Ui.BLUE
+                );
+        contact.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            CONTACT,
+                            "Contact"
+                    );
+                }
+        );
+        infoBlock.addView(
+                contact,
+                catalogueMenuItemParams()
+        );
+
+        TextView suggest =
+                catalogueMenuItem(
+                        "Suggérer un produit",
+                        Ui.YELLOW
+                );
+        suggest.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            SUGGEST_PRODUCT,
+                            "Suggérer un produit"
+                    );
+                }
+        );
+        infoBlock.addView(
+                suggest,
+                catalogueMenuItemParams()
+        );
+
+        TextView legal =
+                catalogueMenuItem(
+                        "Mentions légales",
+                        Ui.NAVY
+                );
+        legal.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            LEGAL,
+                            "Mentions légales"
+                    );
+                }
+        );
+        infoBlock.addView(
+                legal,
+                catalogueMenuItemParams()
+        );
+
+        TextView privacy =
+                catalogueMenuItem(
+                        "Politique de confidentialité",
+                        Ui.NAVY
+                );
+        privacy.setOnClickListener(
+                view -> {
+                    popup.dismiss();
+                    openWeb(
+                            PRIVACY,
+                            "Confidentialité"
+                    );
+                }
+        );
+        infoBlock.addView(
+                privacy,
+                catalogueMenuItemParams()
+        );
+
+        panel.addView(
+                infoBlock,
+                menuSectionParams()
+        );
 
         popup.showAsDropDown(
                 anchor,
                 0,
                 Ui.dp(this, 3)
         );
+    }
+
+    private LinearLayout menuSectionBlock(
+            String title,
+            int accent
+    ) {
+        LinearLayout block =
+                new LinearLayout(this);
+        block.setOrientation(
+                LinearLayout.VERTICAL
+        );
+        block.setPadding(
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 5)
+        );
+        block.setBackground(
+                Ui.roundedStroke(
+                        Ui.softAccent(accent),
+                        Ui.BORDER,
+                        1,
+                        16,
+                        this
+                )
+        );
+
+        TextView heading =
+                Ui.text(
+                        this,
+                        title.toUpperCase(
+                                Locale.ROOT
+                        ),
+                        10,
+                        accent == Ui.YELLOW
+                                ? Ui.NAVY
+                                : accent,
+                        true
+                );
+
+        LinearLayout.LayoutParams headingParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        headingParams.bottomMargin =
+                Ui.dp(this, 8);
+
+        block.addView(
+                heading,
+                headingParams
+        );
+
+        return block;
+    }
+
+    private LinearLayout.LayoutParams menuSectionParams() {
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        params.bottomMargin =
+                Ui.dp(this, 10);
+        return params;
     }
 
     private TextView catalogueMenuItem(
@@ -946,8 +1134,7 @@ public class MainActivity extends Activity {
                 Ui.dp(this, 16),
                 Ui.dp(this, 8),
                 Ui.dp(this, 16),
-                Ui.dp(this, 28) +
-                Ui.bottomSystemSpace(this)
+                Ui.dp(this, 28)
         );
 
         scroll.addView(
