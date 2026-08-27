@@ -51,7 +51,7 @@ final class CartService {
             );
 
     private static final long SNAPSHOT_CACHE_MS =
-            650L;
+            3500L;
 
     private static volatile CartSnapshot lastSnapshot;
     private static volatile long lastSnapshotAt = 0L;
@@ -351,6 +351,171 @@ final class CartService {
                 5000L;
     }
 
+    static void rememberOptimistic(
+            CartSnapshot snapshot
+    ) {
+        if (snapshot == null) {
+            return;
+        }
+
+        lastSnapshot =
+                snapshot;
+
+        lastSnapshotAt =
+                System.currentTimeMillis();
+    }
+
+    static CartSnapshot optimisticQuantity(
+            CartSnapshot source,
+            String itemKey,
+            int quantity
+    ) {
+        if (source == null ||
+                itemKey == null ||
+                itemKey.trim().isEmpty()) {
+            return source;
+        }
+
+        CartItem target =
+                source.itemByKey(
+                        itemKey
+                );
+
+        if (target == null) {
+            return source;
+        }
+
+        int desired =
+                Math.max(
+                        0,
+                        quantity
+                );
+
+        List<CartItem> items =
+                new ArrayList<>();
+
+        long oldSubtotal =
+                target.lineSubtotalTtc;
+
+        long oldTotal =
+                target.lineTotalTtc;
+
+        long newSubtotal =
+                0L;
+
+        long newTotal =
+                0L;
+
+        for (CartItem item :
+                source.items) {
+            if (!item.key.equals(
+                    itemKey
+            )) {
+                items.add(
+                        item
+                );
+                continue;
+            }
+
+            if (desired <= 0) {
+                continue;
+            }
+
+            newSubtotal =
+                    scaledAmount(
+                            item.lineSubtotalTtc,
+                            item.quantity,
+                            desired
+                    );
+
+            newTotal =
+                    scaledAmount(
+                            item.lineTotalTtc,
+                            item.quantity,
+                            desired
+                    );
+
+            items.add(
+                    new CartItem(
+                            item.key,
+                            item.productId,
+                            item.name,
+                            item.imageUrl,
+                            desired,
+                            item.minimum,
+                            item.maximum,
+                            item.multipleOf,
+                            item.editable,
+                            newSubtotal,
+                            newTotal
+                    )
+            );
+        }
+
+        int newItemsCount =
+                Math.max(
+                        0,
+                        source.itemsCount -
+                        Math.max(
+                                0,
+                                target.quantity
+                        ) +
+                        desired
+                );
+
+        long subtotal =
+                Math.max(
+                        0L,
+                        source.subtotalProductsTtc -
+                        oldSubtotal +
+                        newSubtotal
+                );
+
+        long total =
+                Math.max(
+                        0L,
+                        source.totalTtcExcludingShipping -
+                        oldTotal +
+                        newTotal
+                );
+
+        return new CartSnapshot(
+                items,
+                newItemsCount,
+                subtotal,
+                source.discountTtc,
+                source.feesTtc,
+                source.shippingTtc,
+                total,
+                source.currencyCode,
+                source.currencyMinorUnit
+        );
+    }
+
+    private static long scaledAmount(
+            long amount,
+            int fromQuantity,
+            int toQuantity
+    ) {
+        if (toQuantity <= 0 ||
+                amount <= 0L) {
+            return 0L;
+        }
+
+        if (fromQuantity <= 0) {
+            return amount;
+        }
+
+        return Math.max(
+                0L,
+                Math.round(
+                        ((double) amount *
+                        (double) toQuantity) /
+                        (double) fromQuantity
+                )
+        );
+    }
+
     static void getCart(
             Callback callback
     ) {
@@ -494,14 +659,28 @@ final class CartService {
                 callback,
                 session -> {
                     CartSnapshot current =
-                            fetchCart(
-                                    session
-                            );
+                            lastSnapshot;
 
                     CartItem item =
-                            current.itemByKey(
-                                    itemKey
-                            );
+                            current == null
+                                    ? null
+                                    : current.itemByKey(
+                                            itemKey
+                                    );
+
+                    // Fast path: the native cart already knows this line.
+                    // Avoid the old GET /cart round trip before UPDATE.
+                    if (item == null) {
+                        current =
+                                fetchCart(
+                                        session
+                                );
+
+                        item =
+                                current.itemByKey(
+                                        itemKey
+                                );
+                    }
 
                     if (item == null) {
                         return current;
@@ -556,16 +735,18 @@ final class CartService {
                 callback,
                 session -> {
                     CartSnapshot current =
-                            fetchCart(
-                                    session
-                            );
+                            lastSnapshot;
 
-                    if (current.itemByKey(
-                            itemKey
-                    ) == null) {
+                    if (current != null &&
+                            current.itemByKey(
+                                    itemKey
+                            ) == null) {
                         return current;
                     }
 
+                    // No preliminary GET when the native cart already has
+                    // a valid Cart-Token/session. removeItem() will only
+                    // fetch if Woo genuinely requires a token.
                     return removeItem(
                             session,
                             itemKey
@@ -1068,7 +1249,7 @@ final class CartService {
 
             connection.setRequestProperty(
                     "User-Agent",
-                    "LudorumAndroid/1.1.21"
+                    "LudorumAndroid/1.1.22"
             );
 
             if (session.cookies != null &&

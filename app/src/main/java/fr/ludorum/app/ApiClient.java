@@ -48,8 +48,8 @@ final class ApiClient {
     private static final Handler MAIN =
             new Handler(Looper.getMainLooper());
 
-    private static final long PRODUCTS_CACHE_MS = 30000L;
-    private static final long PRODUCT_CACHE_MS = 30000L;
+    private static final long PRODUCTS_CACHE_MS = 90000L;
+    private static final long PRODUCT_CACHE_MS = 90000L;
     private static final long CATEGORY_CACHE_MS = 300000L;
 
     /*
@@ -731,7 +731,7 @@ final class ApiClient {
         connection.setUseCaches(true);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Connection", "keep-alive");
-        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.21");
+        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.22");
         connection.setInstanceFollowRedirects(true);
         return connection;
     }

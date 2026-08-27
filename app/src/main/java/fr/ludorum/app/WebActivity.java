@@ -65,6 +65,7 @@ public class WebActivity extends Activity {
     private boolean accountMode = false;
     private boolean allowProductPage = false;
     private String appScriptCache;
+    private static volatile String sharedAppScriptCache;
 
     private long lastPolishAt = 0L;
     private String lastPolishUrl = "";
@@ -415,7 +416,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.21"
+                " LudorumAndroid/1.1.22"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1609,7 +1610,13 @@ public class WebActivity extends Activity {
                     now;
 
             if (appScriptCache == null) {
-                StringBuilder script = new StringBuilder();
+                appScriptCache =
+                        sharedAppScriptCache;
+            }
+
+            if (appScriptCache == null) {
+                StringBuilder script =
+                        new StringBuilder();
 
                 try (BufferedReader reader =
                              new BufferedReader(
@@ -1619,15 +1626,28 @@ public class WebActivity extends Activity {
                                      )
                              )) {
                     String line;
-                    while ((line = reader.readLine()) != null) {
-                        script.append(line).append('\n');
+
+                    while ((line =
+                            reader.readLine()) != null) {
+                        script.append(
+                                line
+                        ).append(
+                                '\n'
+                        );
                     }
                 }
 
-                appScriptCache = script.toString();
+                appScriptCache =
+                        script.toString();
+
+                sharedAppScriptCache =
+                        appScriptCache;
             }
 
-            view.evaluateJavascript(appScriptCache, null);
+            view.evaluateJavascript(
+                    appScriptCache,
+                    null
+            );
         } catch (Exception ignored) {
             // Aucun popup de diagnostic en production.
         }
@@ -2410,7 +2430,12 @@ public class WebActivity extends Activity {
             try {
                 // Le contenu est déjà visible avant d'activer les fonctions
                 // secondaires. En cas de souci, le panier reste accessible.
-                safeApplyAppPolish(view);
+                if (!accountMode) {
+                    safeApplyAppPolish(
+                            view
+                    );
+                }
+
                 refreshTickerWithoutCompetingWithAccount(
                         false,
                         500L
@@ -2431,7 +2456,16 @@ public class WebActivity extends Activity {
                 String url
         ) {
             try {
-                CookieManager.getInstance().flush();
+                view.postDelayed(
+                        () -> {
+                            try {
+                                CookieManager
+                                        .getInstance()
+                                        .flush();
+                            } catch (Throwable ignored) {}
+                        },
+                        450L
+                );
 
                 if (progress != null) {
                     progress.setVisibility(

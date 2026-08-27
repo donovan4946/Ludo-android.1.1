@@ -17,6 +17,9 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -70,7 +73,11 @@ public class MainActivity extends Activity {
     private boolean cartMode = false;
 
     private boolean cartMutationInFlight = false;
+    private int cartMutationSerial = 0;
     private CartService.CartSnapshot currentCartSnapshot;
+
+    private WebView accountWarmupWebView;
+    private static volatile boolean accountWarmupStarted = false;
 
     // Empêche une ancienne requête réseau de continuer à construire
     // des vues/images après que l'utilisateur a changé d'écran.
@@ -96,6 +103,7 @@ public class MainActivity extends Activity {
 
         buildScreen();
         loadCategories();
+        scheduleAccountWarmup();
 
         Intent launchIntent =
                 getIntent();
@@ -123,6 +131,119 @@ public class MainActivity extends Activity {
         }
 
         showHome();
+    }
+
+    private void scheduleAccountWarmup() {
+        if (accountWarmupStarted ||
+                root == null) {
+            return;
+        }
+
+        root.postDelayed(
+                () -> {
+                    if (accountWarmupStarted ||
+                            isFinishing() ||
+                            isDestroyed()) {
+                        return;
+                    }
+
+                    accountWarmupStarted =
+                            true;
+
+                    try {
+                        WebView warm =
+                                new WebView(this);
+
+                        accountWarmupWebView =
+                                warm;
+
+                        WebSettings settings =
+                                warm.getSettings();
+
+                        settings.setJavaScriptEnabled(
+                                false
+                        );
+
+                        settings.setDomStorageEnabled(
+                                true
+                        );
+
+                        settings.setCacheMode(
+                                WebSettings.LOAD_DEFAULT
+                        );
+
+                        settings.setLoadsImagesAutomatically(
+                                false
+                        );
+
+                        warm.setAlpha(0f);
+                        warm.setVisibility(
+                                View.INVISIBLE
+                        );
+
+                        warm.setWebViewClient(
+                                new WebViewClient() {
+                                    @Override
+                                    public void onPageFinished(
+                                            WebView view,
+                                            String url
+                                    ) {
+                                        view.postDelayed(
+                                                () ->
+                                                        destroyAccountWarmup(),
+                                                350L
+                                        );
+                                    }
+                                }
+                        );
+
+                        root.addView(
+                                warm,
+                                new LinearLayout.LayoutParams(
+                                        1,
+                                        1
+                                )
+                        );
+
+                        warm.loadUrl(
+                                ACCOUNT
+                        );
+
+                    } catch (Throwable ignored) {
+                        destroyAccountWarmup();
+                    }
+                },
+                1800L
+        );
+    }
+
+    private void destroyAccountWarmup() {
+        WebView warm =
+                accountWarmupWebView;
+
+        accountWarmupWebView =
+                null;
+
+        if (warm == null) {
+            return;
+        }
+
+        try {
+            warm.stopLoading();
+        } catch (Throwable ignored) {}
+
+        try {
+            if (warm.getParent() instanceof ViewGroup) {
+                ((ViewGroup) warm.getParent())
+                        .removeView(
+                                warm
+                        );
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            warm.destroy();
+        } catch (Throwable ignored) {}
     }
 
     private void configureSystemBars() {
@@ -3463,6 +3584,7 @@ public class MainActivity extends Activity {
         productMode = false;
         cartMode = true;
         cartMutationInFlight = false;
+        cartMutationSerial++;
 
         favoriteHeartViews.clear();
         setSearchText("");
@@ -4502,12 +4624,44 @@ public class MainActivity extends Activity {
             CartService.CartItem item
     ) {
         if (!cartMode ||
-                item == null ||
-                cartMutationInFlight) {
+                item == null) {
             return;
         }
 
-        cartMutationInFlight = true;
+        final int mutationId =
+                ++cartMutationSerial;
+
+        final int preservedScrollY =
+                scroll == null
+                        ? 0
+                        : scroll.getScrollY();
+
+        final CartService.CartSnapshot before =
+                currentCartSnapshot != null
+                        ? currentCartSnapshot
+                        : CartService.getCachedSnapshot();
+
+        final CartService.CartSnapshot optimistic =
+                CartService.optimisticQuantity(
+                        before,
+                        item.key,
+                        0
+                );
+
+        if (optimistic != null) {
+            currentCartSnapshot =
+                    optimistic;
+
+            CartService.rememberOptimistic(
+                    optimistic
+            );
+
+            renderCartFast(
+                    optimistic,
+                    null,
+                    preservedScrollY
+            );
+        }
 
         CartService.removeItem(
                 item.key,
@@ -4516,16 +4670,19 @@ public class MainActivity extends Activity {
                     public void onSuccess(
                             CartService.CartSnapshot snapshot
                     ) {
-                        if (!cartMode) {
-                            cartMutationInFlight = false;
+                        if (!cartMode ||
+                                mutationId !=
+                                cartMutationSerial) {
                             return;
                         }
 
-                        currentCartSnapshot = snapshot;
+                        currentCartSnapshot =
+                                snapshot;
 
-                        renderCart(
+                        renderCartFast(
                                 snapshot,
-                                null
+                                null,
+                                preservedScrollY
                         );
                     }
 
@@ -4533,18 +4690,30 @@ public class MainActivity extends Activity {
                     public void onError(
                             String message
                     ) {
-                        cartMutationInFlight = false;
-
-                        if (!cartMode) {
+                        if (!cartMode ||
+                                mutationId !=
+                                cartMutationSerial) {
                             return;
                         }
 
-                        renderCart(
-                                currentCartSnapshot,
+                        if (before != null) {
+                            currentCartSnapshot =
+                                    before;
+
+                            CartService.rememberOptimistic(
+                                    before
+                            );
+                        }
+
+                        renderCartFast(
+                                before != null
+                                        ? before
+                                        : currentCartSnapshot,
                                 message == null ||
                                 message.trim().isEmpty()
                                         ? "Suppression du produit impossible."
-                                        : message
+                                        : message,
+                                preservedScrollY
                         );
                     }
                 }
@@ -4556,13 +4725,44 @@ public class MainActivity extends Activity {
             int targetQuantity
     ) {
         if (!cartMode ||
-                item == null ||
-                cartMutationInFlight) {
+                item == null) {
             return;
         }
 
-        cartMutationInFlight =
-                true;
+        final int mutationId =
+                ++cartMutationSerial;
+
+        final int preservedScrollY =
+                scroll == null
+                        ? 0
+                        : scroll.getScrollY();
+
+        final CartService.CartSnapshot before =
+                currentCartSnapshot != null
+                        ? currentCartSnapshot
+                        : CartService.getCachedSnapshot();
+
+        final CartService.CartSnapshot optimistic =
+                CartService.optimisticQuantity(
+                        before,
+                        item.key,
+                        targetQuantity
+                );
+
+        if (optimistic != null) {
+            currentCartSnapshot =
+                    optimistic;
+
+            CartService.rememberOptimistic(
+                    optimistic
+            );
+
+            renderCartFast(
+                    optimistic,
+                    null,
+                    preservedScrollY
+            );
+        }
 
         CartService.Callback callback =
                 new CartService.Callback() {
@@ -4570,18 +4770,21 @@ public class MainActivity extends Activity {
                     public void onSuccess(
                             CartService.CartSnapshot snapshot
                     ) {
-                        if (!cartMode) {
-                            cartMutationInFlight =
-                                    false;
+                        // Several quick taps can be queued. Only the newest
+                        // result is allowed to redraw the UI.
+                        if (!cartMode ||
+                                mutationId !=
+                                cartMutationSerial) {
                             return;
                         }
 
                         currentCartSnapshot =
                                 snapshot;
 
-                        renderCart(
+                        renderCartFast(
                                 snapshot,
-                                null
+                                null,
+                                preservedScrollY
                         );
                     }
 
@@ -4589,19 +4792,30 @@ public class MainActivity extends Activity {
                     public void onError(
                             String message
                     ) {
-                        cartMutationInFlight =
-                                false;
-
-                        if (!cartMode) {
+                        if (!cartMode ||
+                                mutationId !=
+                                cartMutationSerial) {
                             return;
                         }
 
-                        renderCart(
-                                currentCartSnapshot,
+                        if (before != null) {
+                            currentCartSnapshot =
+                                    before;
+
+                            CartService.rememberOptimistic(
+                                    before
+                            );
+                        }
+
+                        renderCartFast(
+                                before != null
+                                        ? before
+                                        : currentCartSnapshot,
                                 message == null ||
                                 message.trim().isEmpty()
                                         ? "Modification du panier impossible."
-                                        : message
+                                        : message,
+                                preservedScrollY
                         );
                     }
                 };
@@ -4617,6 +4831,34 @@ public class MainActivity extends Activity {
                     item.key,
                     targetQuantity,
                     callback
+            );
+        }
+    }
+
+    private void renderCartFast(
+            CartService.CartSnapshot snapshot,
+            String inlineError,
+            int preservedScrollY
+    ) {
+        renderCart(
+                snapshot,
+                inlineError
+        );
+
+        if (scroll != null &&
+                cartMode) {
+            scroll.post(
+                    () -> {
+                        if (cartMode) {
+                            scroll.scrollTo(
+                                    0,
+                                    Math.max(
+                                            0,
+                                            preservedScrollY
+                                    )
+                            );
+                        }
+                    }
             );
         }
     }
@@ -5319,6 +5561,14 @@ public class MainActivity extends Activity {
             return;
         }
 
+        if (url.toLowerCase(
+                Locale.ROOT
+        ).contains(
+                "/mon-compte"
+        )) {
+            destroyAccountWarmup();
+        }
+
         try {
             Intent intent =
                     new Intent(
@@ -5513,6 +5763,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        destroyAccountWarmup();
         super.onDestroy();
     }
 
