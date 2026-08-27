@@ -43,6 +43,7 @@ public class WebActivity extends Activity {
     static final String EXTRA_URL = "url";
     static final String EXTRA_TITLE = "title";
     static final String EXTRA_ALLOW_PRODUCT_PAGE = "allow_product_page";
+    static final String EXTRA_RESOLVE_CHECKOUT = "resolve_checkout";
 
     private static final String BASE = "https://ludorum.fr";
     private static final String ACCOUNT = BASE + "/mon-compte/";
@@ -64,6 +65,8 @@ public class WebActivity extends Activity {
     private boolean cartMode = false;
     private boolean accountMode = false;
     private boolean allowProductPage = false;
+    private boolean checkoutResolverMode = false;
+    private boolean checkoutResolutionAttempted = false;
     private String appScriptCache;
     private static volatile String sharedAppScriptCache;
 
@@ -93,6 +96,12 @@ public class WebActivity extends Activity {
                         false
                 );
 
+        checkoutResolverMode =
+                getIntent().getBooleanExtra(
+                        EXTRA_RESOLVE_CHECKOUT,
+                        false
+                );
+
         initialUrl = url == null ? BASE : url;
         String initialLower =
                 initialUrl.toLowerCase(java.util.Locale.ROOT);
@@ -101,13 +110,27 @@ public class WebActivity extends Activity {
                 initialLower.contains("/panier") ||
                 initialLower.contains("/cart");
 
-        if (cartMode) {
+        if (cartMode &&
+                !checkoutResolverMode) {
             openNativeScreen(
                     "cart",
                     null,
                     null
             );
             return;
+        }
+
+        if (checkoutResolverMode) {
+            cartMode = false;
+            title.setText(
+                    "Commande"
+            );
+            web.setVisibility(
+                    View.INVISIBLE
+            );
+            progress.setVisibility(
+                    View.VISIBLE
+            );
         }
 
         accountMode =
@@ -416,7 +439,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.22"
+                " LudorumAndroid/1.1.23"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1875,6 +1898,144 @@ public class WebActivity extends Activity {
                 raw.contains("return-to-shop");
     }
 
+    private boolean isInitialAllowedProduct(
+            String productSlug
+    ) {
+        if (!allowProductPage ||
+                productSlug == null ||
+                productSlug.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            Uri initial =
+                    Uri.parse(
+                            initialUrl
+                    );
+
+            String initialPath =
+                    pathOf(
+                            initial
+                    );
+
+            String initialSlug =
+                    commerceSlugAfter(
+                            initialPath,
+                            "/produit/"
+                    );
+
+            if (initialSlug == null) {
+                initialSlug =
+                        commerceSlugAfter(
+                                initialPath,
+                                "/product/"
+                        );
+            }
+
+            return productSlug.equalsIgnoreCase(
+                    initialSlug == null
+                            ? ""
+                            : initialSlug
+            );
+
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private boolean isCartPath(
+            Uri uri
+    ) {
+        if (!isLudorumHost(
+                uri
+        )) {
+            return false;
+        }
+
+        String path =
+                pathOf(
+                        uri
+                );
+
+        return path.contains(
+                "/panier"
+        ) ||
+        path.contains(
+                "/cart"
+        );
+    }
+
+    private void resolveCheckoutFromCart(
+            WebView view
+    ) {
+        if (!checkoutResolverMode ||
+                checkoutResolutionAttempted ||
+                view == null) {
+            return;
+        }
+
+        checkoutResolutionAttempted =
+                true;
+
+        cartMode =
+                false;
+
+        title.setText(
+                "Commande"
+        );
+
+        progress.setVisibility(
+                View.VISIBLE
+        );
+
+        String script =
+                "(function(){" +
+                "var selectors=[" +
+                "'a.checkout-button'," +
+                "'.wc-proceed-to-checkout a'," +
+                "'a.wc-block-cart__submit-button'," +
+                "'.wc-block-cart__submit-container a'," +
+                "'a[href*=checkout]'," +
+                "'a[href*=commande]'," +
+                "'a[href*=order-pay]'" +
+                "];" +
+                "for(var i=0;i<selectors.length;i++){" +
+                "var a=document.querySelector(selectors[i]);" +
+                "if(a&&a.href){" +
+                "window.location.href=a.href;" +
+                "return 'go';" +
+                "}" +
+                "}" +
+                "return 'none';" +
+                "})()";
+
+        view.evaluateJavascript(
+                script,
+                result -> {
+                    if (result != null &&
+                            result.contains(
+                                    "go"
+                            )) {
+                        return;
+                    }
+
+                    // Standard Woo fallback only if the cart template did
+                    // not expose its real checkout link.
+                    checkoutResolverMode =
+                            false;
+
+                    view.setVisibility(
+                            View.VISIBLE
+                    );
+
+                    view.loadUrl(
+                            BASE +
+                            "/checkout/"
+                    );
+                }
+        );
+    }
+
     private boolean routeCommerceToNative(
             Uri uri
     ) {
@@ -1942,8 +2103,8 @@ public class WebActivity extends Activity {
 
         if (productSlug != null) {
             if (allowProductPage &&
-                    uri.toString().equalsIgnoreCase(
-                            initialUrl
+                    isInitialAllowedProduct(
+                            productSlug
                     )) {
                 return false;
             }
@@ -2030,6 +2191,26 @@ public class WebActivity extends Activity {
         String scheme = uri.getScheme().toLowerCase();
 
         if (scheme.equals("http") || scheme.equals("https")) {
+            if (checkoutResolverMode &&
+                    isLudorumHost(
+                            uri
+                    ) &&
+                    !isCartPath(
+                            uri
+                    )) {
+                checkoutResolverMode =
+                        false;
+
+                cartMode =
+                        false;
+
+                web.setVisibility(
+                        View.VISIBLE
+                );
+
+                return false;
+            }
+
             // Depuis le panier, "revenir/continuer vers la boutique" doit
             // toujours ouvrir la Boutique native Ludorum.
             if (cartMode &&
@@ -2479,6 +2660,30 @@ public class WebActivity extends Activity {
                     current =
                             Uri.parse(url);
                 } catch (Throwable ignored) {}
+
+                if (checkoutResolverMode &&
+                        current != null &&
+                        isCartPath(
+                                current
+                        )) {
+                    resolveCheckoutFromCart(
+                            view
+                    );
+                    return;
+                }
+
+                if (checkoutResolverMode &&
+                        current != null &&
+                        !isCartPath(
+                                current
+                        )) {
+                    checkoutResolverMode =
+                            false;
+
+                    view.setVisibility(
+                            View.VISIBLE
+                    );
+                }
 
                 if (current != null &&
                         routeCommerceToNative(current)) {

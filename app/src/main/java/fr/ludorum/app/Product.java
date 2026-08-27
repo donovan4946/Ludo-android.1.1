@@ -3,11 +3,15 @@ package fr.ludorum.app;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class Product {
     int id;
     String name = "";
     String slug = "";
     String shortDescription = "";
+    String description = "";
     String type = "simple";
     String permalink = "";
     String imageUrl = "";
@@ -20,6 +24,14 @@ final class Product {
     boolean inStock;
     boolean purchasable;
     String addToCartUrl = "";
+    String averageRating = "0";
+    int reviewCount = 0;
+    final List<Attribute> attributes = new ArrayList<>();
+
+    static final class Attribute {
+        String name = "";
+        final List<String> values = new ArrayList<>();
+    }
 
     static Product fromJson(JSONObject o) {
         Product p = new Product();
@@ -27,11 +39,43 @@ final class Product {
         p.name = o.optString("name", "Produit");
         p.slug = o.optString("slug", "");
         p.shortDescription = o.optString("short_description", "");
+        p.description = o.optString("description", "");
         p.type = o.optString("type", "simple");
         p.permalink = o.optString("permalink", "");
         p.onSale = o.optBoolean("on_sale", false);
         p.inStock = o.optBoolean("is_in_stock", false);
         p.purchasable = o.optBoolean("is_purchasable", false);
+        p.averageRating = o.optString("average_rating", "0");
+        p.reviewCount = o.optInt("review_count", 0);
+
+        JSONArray attributes = o.optJSONArray("attributes");
+        if (attributes != null) {
+            for (int i = 0; i < attributes.length(); i++) {
+                JSONObject rawAttribute = attributes.optJSONObject(i);
+                if (rawAttribute == null) continue;
+
+                Attribute attribute = new Attribute();
+                attribute.name = rawAttribute.optString("name", "");
+
+                JSONArray terms = rawAttribute.optJSONArray("terms");
+                if (terms != null) {
+                    for (int j = 0; j < terms.length(); j++) {
+                        JSONObject term = terms.optJSONObject(j);
+                        if (term == null) continue;
+
+                        String value = term.optString("name", "").trim();
+                        if (!value.isEmpty()) {
+                            attribute.values.add(value);
+                        }
+                    }
+                }
+
+                if (!attribute.name.trim().isEmpty() ||
+                        !attribute.values.isEmpty()) {
+                    p.attributes.add(attribute);
+                }
+            }
+        }
 
         JSONObject prices = o.optJSONObject("prices");
         if (prices != null) {

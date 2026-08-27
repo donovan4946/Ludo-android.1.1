@@ -3472,6 +3472,10 @@ public class MainActivity extends Activity {
                 actionParams
         );
 
+        addProductInformationTabs(
+                product
+        );
+
         TextView back =
                 Ui.pill(
                         this,
@@ -3500,6 +3504,1071 @@ public class MainActivity extends Activity {
         content.addView(
                 back,
                 backParams
+        );
+    }
+
+    private void addProductInformationTabs(
+            Product product
+    ) {
+        LinearLayout card =
+                new LinearLayout(this);
+
+        card.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        card.setPadding(
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 10),
+                Ui.dp(this, 12)
+        );
+
+        card.setBackground(
+                Ui.roundedStroke(
+                        Color.WHITE,
+                        Ui.MENU_BORDER,
+                        1,
+                        18,
+                        this
+                )
+        );
+
+        LinearLayout tabs =
+                new LinearLayout(this);
+
+        tabs.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        TextView descriptionTab =
+                productInfoTab(
+                        "Description"
+                );
+
+        TextView informationTab =
+                productInfoTab(
+                        "Informations"
+                );
+
+        String reviewsLabel =
+                product.reviewCount > 0
+                        ? "Avis (" +
+                        product.reviewCount +
+                        ")"
+                        : "Avis";
+
+        TextView reviewsTab =
+                productInfoTab(
+                        reviewsLabel
+                );
+
+        tabs.addView(
+                descriptionTab,
+                new LinearLayout.LayoutParams(
+                        0,
+                        Ui.dp(this, 42),
+                        1f
+                )
+        );
+
+        LinearLayout.LayoutParams informationParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        Ui.dp(this, 42),
+                        1f
+                );
+        informationParams.leftMargin =
+                Ui.dp(this, 6);
+
+        tabs.addView(
+                informationTab,
+                informationParams
+        );
+
+        LinearLayout.LayoutParams reviewsParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        Ui.dp(this, 42),
+                        1f
+                );
+        reviewsParams.leftMargin =
+                Ui.dp(this, 6);
+
+        tabs.addView(
+                reviewsTab,
+                reviewsParams
+        );
+
+        card.addView(
+                tabs,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 42)
+                )
+        );
+
+        LinearLayout body =
+                new LinearLayout(this);
+
+        body.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        LinearLayout.LayoutParams bodyParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        bodyParams.topMargin =
+                Ui.dp(this, 12);
+
+        card.addView(
+                body,
+                bodyParams
+        );
+
+        TextView[] allTabs =
+                new TextView[]{
+                        descriptionTab,
+                        informationTab,
+                        reviewsTab
+                };
+
+        descriptionTab.setOnClickListener(
+                view -> {
+                    setProductInfoTabActive(
+                            allTabs,
+                            0
+                    );
+
+                    renderProductDescription(
+                            product,
+                            body
+                    );
+                }
+        );
+
+        informationTab.setOnClickListener(
+                view -> {
+                    setProductInfoTabActive(
+                            allTabs,
+                            1
+                    );
+
+                    renderProductInformation(
+                            product,
+                            body
+                    );
+                }
+        );
+
+        reviewsTab.setOnClickListener(
+                view -> {
+                    setProductInfoTabActive(
+                            allTabs,
+                            2
+                    );
+
+                    renderProductReviews(
+                            product,
+                            body
+                    );
+                }
+        );
+
+        setProductInfoTabActive(
+                allTabs,
+                0
+        );
+
+        renderProductDescription(
+                product,
+                body
+        );
+
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        cardParams.topMargin =
+                Ui.dp(this, 16);
+
+        content.addView(
+                card,
+                cardParams
+        );
+    }
+
+    private TextView productInfoTab(
+            String label
+    ) {
+        TextView tab =
+                Ui.text(
+                        this,
+                        label,
+                        12,
+                        Ui.MENU_MUTED,
+                        true
+                );
+
+        tab.setGravity(
+                Gravity.CENTER
+        );
+
+        tab.setSingleLine(
+                true
+        );
+
+        tab.setEllipsize(
+                android.text.TextUtils.TruncateAt.END
+        );
+
+        tab.setClickable(
+                true
+        );
+
+        tab.setFocusable(
+                true
+        );
+
+        return tab;
+    }
+
+    private void setProductInfoTabActive(
+            TextView[] tabs,
+            int activeIndex
+    ) {
+        for (int i = 0;
+             i < tabs.length;
+             i++) {
+            TextView tab =
+                    tabs[i];
+
+            boolean active =
+                    i == activeIndex;
+
+            int accent =
+                    i == 0
+                            ? Ui.BLUE
+                            : i == 1
+                            ? Ui.YELLOW
+                            : Ui.RED;
+
+            tab.setTextColor(
+                    active
+                            ? Ui.menuAccentText(
+                                    accent
+                            )
+                            : Ui.MENU_MUTED
+            );
+
+            tab.setBackground(
+                    Ui.roundedStroke(
+                            active
+                                    ? Ui.softPanel(
+                                            accent
+                                    )
+                                    : Ui.MENU_ITEM,
+                            active
+                                    ? accent
+                                    : Ui.MENU_BORDER,
+                            1,
+                            12,
+                            this
+                    )
+            );
+        }
+    }
+
+    private void renderProductDescription(
+            Product product,
+            LinearLayout body
+    ) {
+        body.removeAllViews();
+
+        TextView title =
+                Ui.text(
+                        this,
+                        "Description du produit",
+                        17,
+                        Ui.NAVY,
+                        true
+                );
+
+        body.addView(
+                title
+        );
+
+        String html =
+                product.description == null ||
+                product.description.trim().isEmpty()
+                        ? product.shortDescription
+                        : product.description;
+
+        TextView description =
+                Ui.text(
+                        this,
+                        "",
+                        14,
+                        Ui.TEXT,
+                        false
+                );
+
+        if (html == null ||
+                html.trim().isEmpty()) {
+            description.setText(
+                    "La description détaillée de ce produit n’est pas encore renseignée."
+            );
+
+            description.setTextColor(
+                    Ui.MENU_MUTED
+            );
+
+        } else {
+            description.setText(
+                    Html.fromHtml(
+                            html,
+                            Html.FROM_HTML_MODE_LEGACY
+                    )
+            );
+        }
+
+        description.setLineSpacing(
+                Ui.dp(this, 4),
+                1f
+        );
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        params.topMargin =
+                Ui.dp(this, 9);
+
+        body.addView(
+                description,
+                params
+        );
+    }
+
+    private void renderProductInformation(
+            Product product,
+            LinearLayout body
+    ) {
+        body.removeAllViews();
+
+        TextView title =
+                Ui.text(
+                        this,
+                        "Informations complémentaires",
+                        17,
+                        Ui.NAVY,
+                        true
+                );
+
+        body.addView(
+                title
+        );
+
+        addProductInformationRow(
+                body,
+                "Disponibilité",
+                product.inStock
+                        ? "En stock"
+                        : "Rupture de stock",
+                product.inStock
+                        ? Ui.GREEN
+                        : Ui.RED
+        );
+
+        addProductInformationRow(
+                body,
+                "Type",
+                "simple".equalsIgnoreCase(
+                        product.type
+                )
+                        ? "Produit"
+                        : "Produit avec options",
+                Ui.MENU_TEXT
+        );
+
+        for (Product.Attribute attribute :
+                product.attributes) {
+            if (attribute == null) {
+                continue;
+            }
+
+            String label =
+                    attribute.name == null ||
+                    attribute.name.trim().isEmpty()
+                            ? "Information"
+                            : attribute.name.trim();
+
+            String value =
+                    attribute.values.isEmpty()
+                            ? "—"
+                            : android.text.TextUtils.join(
+                                    " • ",
+                                    attribute.values
+                            );
+
+            addProductInformationRow(
+                    body,
+                    label,
+                    value,
+                    Ui.MENU_TEXT
+            );
+        }
+
+        if (product.attributes.isEmpty()) {
+            TextView hint =
+                    Ui.text(
+                            this,
+                            "Les informations spécifiques à ce produit seront affichées ici dès qu’elles sont renseignées dans WooCommerce.",
+                            13,
+                            Ui.MENU_MUTED,
+                            false
+                    );
+
+            hint.setLineSpacing(
+                    Ui.dp(this, 3),
+                    1f
+            );
+
+            LinearLayout.LayoutParams hintParams =
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    );
+
+            hintParams.topMargin =
+                    Ui.dp(this, 10);
+
+            body.addView(
+                    hint,
+                    hintParams
+            );
+        }
+    }
+
+    private void addProductInformationRow(
+            LinearLayout body,
+            String label,
+            String value,
+            int valueColor
+    ) {
+        LinearLayout row =
+                new LinearLayout(this);
+
+        row.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        row.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        row.setPadding(
+                Ui.dp(this, 11),
+                Ui.dp(this, 10),
+                Ui.dp(this, 11),
+                Ui.dp(this, 10)
+        );
+
+        row.setBackground(
+                Ui.roundedStroke(
+                        Ui.MENU_ITEM,
+                        Ui.MENU_BORDER,
+                        1,
+                        11,
+                        this
+                )
+        );
+
+        TextView labelView =
+                Ui.text(
+                        this,
+                        label,
+                        13,
+                        Ui.MENU_MUTED,
+                        true
+                );
+
+        TextView valueView =
+                Ui.text(
+                        this,
+                        value,
+                        13,
+                        valueColor,
+                        true
+                );
+
+        valueView.setGravity(
+                Gravity.END |
+                Gravity.CENTER_VERTICAL
+        );
+
+        row.addView(
+                labelView,
+                new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        .42f
+                )
+        );
+
+        LinearLayout.LayoutParams valueParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        .58f
+                );
+
+        valueParams.leftMargin =
+                Ui.dp(this, 10);
+
+        row.addView(
+                valueView,
+                valueParams
+        );
+
+        LinearLayout.LayoutParams rowParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        rowParams.topMargin =
+                Ui.dp(this, 7);
+
+        body.addView(
+                row,
+                rowParams
+        );
+    }
+
+    private void renderProductReviews(
+            Product product,
+            LinearLayout body
+    ) {
+        body.removeAllViews();
+
+        LinearLayout heading =
+                new LinearLayout(this);
+
+        heading.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        heading.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        TextView title =
+                Ui.text(
+                        this,
+                        "Avis clients",
+                        17,
+                        Ui.NAVY,
+                        true
+                );
+
+        heading.addView(
+                title,
+                new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                )
+        );
+
+        String rating =
+                product.averageRating == null ||
+                product.averageRating.trim().isEmpty()
+                        ? "0"
+                        : product.averageRating.trim();
+
+        TextView score =
+                Ui.text(
+                        this,
+                        "★ " +
+                        rating +
+                        "/5",
+                        13,
+                        Ui.menuAccentText(
+                                Ui.YELLOW
+                        ),
+                        true
+                );
+
+        heading.addView(
+                score
+        );
+
+        body.addView(
+                heading
+        );
+
+        TextView write =
+                Ui.pill(
+                        this,
+                        "Écrire un avis",
+                        Color.WHITE,
+                        Ui.RED,
+                        Ui.RED
+                );
+
+        write.setTextSize(
+                13
+        );
+
+        write.setOnClickListener(
+                view ->
+                        openProductReviews(
+                                product
+                        )
+        );
+
+        LinearLayout.LayoutParams writeParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 44)
+                );
+
+        writeParams.topMargin =
+                Ui.dp(this, 10);
+
+        body.addView(
+                write,
+                writeParams
+        );
+
+        LinearLayout reviewsHost =
+                new LinearLayout(this);
+
+        reviewsHost.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        LinearLayout.LayoutParams hostParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        hostParams.topMargin =
+                Ui.dp(this, 10);
+
+        body.addView(
+                reviewsHost,
+                hostParams
+        );
+
+        ProgressBar progress =
+                new ProgressBar(this);
+
+        LinearLayout.LayoutParams progressParams =
+                new LinearLayout.LayoutParams(
+                        Ui.dp(this, 32),
+                        Ui.dp(this, 32)
+                );
+
+        progressParams.gravity =
+                Gravity.CENTER_HORIZONTAL;
+
+        progressParams.topMargin =
+                Ui.dp(this, 8);
+
+        reviewsHost.addView(
+                progress,
+                progressParams
+        );
+
+        ApiClient.getProductReviews(
+                product.id,
+                new ApiClient.Callback<List<ApiClient.ProductReview>>() {
+                    @Override
+                    public void onSuccess(
+                            List<ApiClient.ProductReview> reviews
+                    ) {
+                        if (!productMode ||
+                                !reviewsHost.isAttachedToWindow()) {
+                            return;
+                        }
+
+                        reviewsHost.removeAllViews();
+
+                        if (reviews == null ||
+                                reviews.isEmpty()) {
+                            TextView empty =
+                                    Ui.text(
+                                            MainActivity.this,
+                                            "Aucun avis pour le moment. Soyez le premier à partager votre expérience.",
+                                            13,
+                                            Ui.MENU_MUTED,
+                                            false
+                                    );
+
+                            empty.setGravity(
+                                    Gravity.CENTER
+                            );
+
+                            empty.setLineSpacing(
+                                    Ui.dp(
+                                            MainActivity.this,
+                                            3
+                                    ),
+                                    1f
+                            );
+
+                            empty.setPadding(
+                                    Ui.dp(
+                                            MainActivity.this,
+                                            12
+                                    ),
+                                    Ui.dp(
+                                            MainActivity.this,
+                                            15
+                                    ),
+                                    Ui.dp(
+                                            MainActivity.this,
+                                            12
+                                    ),
+                                    Ui.dp(
+                                            MainActivity.this,
+                                            15
+                                    )
+                            );
+
+                            empty.setBackground(
+                                    Ui.roundedStroke(
+                                            Ui.softPanel(
+                                                    Ui.YELLOW
+                                            ),
+                                            Ui.MENU_BORDER,
+                                            1,
+                                            12,
+                                            MainActivity.this
+                                    )
+                            );
+
+                            reviewsHost.addView(
+                                    empty
+                            );
+                            return;
+                        }
+
+                        for (ApiClient.ProductReview review :
+                                reviews) {
+                            reviewsHost.addView(
+                                    productReviewCard(
+                                            review
+                                    )
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void onError(
+                            Exception error
+                    ) {
+                        if (!productMode ||
+                                !reviewsHost.isAttachedToWindow()) {
+                            return;
+                        }
+
+                        reviewsHost.removeAllViews();
+
+                        TextView fallback =
+                                Ui.text(
+                                        MainActivity.this,
+                                        "Les avis ne peuvent pas être chargés pour le moment. Vous pouvez toujours écrire ou consulter les avis sur la fiche complète.",
+                                        13,
+                                        Ui.MENU_MUTED,
+                                        false
+                                );
+
+                        fallback.setGravity(
+                                Gravity.CENTER
+                        );
+
+                        fallback.setPadding(
+                                Ui.dp(
+                                        MainActivity.this,
+                                        12
+                                ),
+                                Ui.dp(
+                                        MainActivity.this,
+                                        14
+                                ),
+                                Ui.dp(
+                                        MainActivity.this,
+                                        12
+                                ),
+                                Ui.dp(
+                                        MainActivity.this,
+                                        14
+                                )
+                        );
+
+                        reviewsHost.addView(
+                                fallback
+                        );
+                    }
+                }
+        );
+    }
+
+    private View productReviewCard(
+            ApiClient.ProductReview review
+    ) {
+        LinearLayout card =
+                new LinearLayout(this);
+
+        card.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        card.setPadding(
+                Ui.dp(this, 12),
+                Ui.dp(this, 11),
+                Ui.dp(this, 12),
+                Ui.dp(this, 11)
+        );
+
+        card.setBackground(
+                Ui.roundedStroke(
+                        Ui.MENU_ITEM,
+                        Ui.MENU_BORDER,
+                        1,
+                        12,
+                        this
+                )
+        );
+
+        LinearLayout header =
+                new LinearLayout(this);
+
+        header.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        header.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        TextView reviewer =
+                Ui.text(
+                        this,
+                        review.reviewer.isEmpty()
+                                ? "Joueur Ludorum"
+                                : review.reviewer,
+                        13,
+                        Ui.NAVY,
+                        true
+                );
+
+        header.addView(
+                reviewer,
+                new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                )
+        );
+
+        TextView stars =
+                Ui.text(
+                        this,
+                        reviewStars(
+                                review.rating
+                        ),
+                        13,
+                        Ui.menuAccentText(
+                                Ui.YELLOW
+                        ),
+                        true
+                );
+
+        header.addView(
+                stars
+        );
+
+        card.addView(
+                header
+        );
+
+        if (review.verified) {
+            TextView verified =
+                    Ui.text(
+                            this,
+                            "✓ Achat vérifié",
+                            10,
+                            Ui.GREEN,
+                            true
+                    );
+
+            LinearLayout.LayoutParams verifiedParams =
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    );
+
+            verifiedParams.topMargin =
+                    Ui.dp(this, 3);
+
+            card.addView(
+                    verified,
+                    verifiedParams
+            );
+        }
+
+        TextView reviewText =
+                Ui.text(
+                        this,
+                        "",
+                        13,
+                        Ui.TEXT,
+                        false
+                );
+
+        reviewText.setText(
+                Html.fromHtml(
+                        review.review,
+                        Html.FROM_HTML_MODE_LEGACY
+                )
+        );
+
+        reviewText.setLineSpacing(
+                Ui.dp(this, 3),
+                1f
+        );
+
+        LinearLayout.LayoutParams reviewParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        reviewParams.topMargin =
+                Ui.dp(this, 7);
+
+        card.addView(
+                reviewText,
+                reviewParams
+        );
+
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+
+        cardParams.bottomMargin =
+                Ui.dp(this, 7);
+
+        card.setLayoutParams(
+                cardParams
+        );
+
+        return card;
+    }
+
+    private String reviewStars(
+            int rating
+    ) {
+        StringBuilder stars =
+                new StringBuilder();
+
+        int safe =
+                Math.max(
+                        0,
+                        Math.min(
+                                5,
+                                rating
+                        )
+                );
+
+        for (int i = 0;
+             i < 5;
+             i++) {
+            stars.append(
+                    i < safe
+                            ? "★"
+                            : "☆"
+            );
+        }
+
+        return stars.toString();
+    }
+
+    private void openProductReviews(
+            Product product
+    ) {
+        if (product == null) {
+            return;
+        }
+
+        String url =
+                product.permalink;
+
+        if (url == null ||
+                url.trim().isEmpty()) {
+            if (product.slug == null ||
+                    product.slug.trim().isEmpty()) {
+                return;
+            }
+
+            url =
+                    BASE +
+                    "/produit/" +
+                    product.slug +
+                    "/";
+        }
+
+        int hash =
+                url.indexOf(
+                        '#'
+                );
+
+        if (hash >= 0) {
+            url =
+                    url.substring(
+                            0,
+                            hash
+                    );
+        }
+
+        Intent intent =
+                new Intent(
+                        this,
+                        WebActivity.class
+                );
+
+        intent.putExtra(
+                WebActivity.EXTRA_URL,
+                url + "#reviews"
+        );
+
+        intent.putExtra(
+                WebActivity.EXTRA_TITLE,
+                "Avis — " +
+                product.name
+        );
+
+        intent.putExtra(
+                WebActivity.EXTRA_ALLOW_PRODUCT_PAGE,
+                true
+        );
+
+        startActivity(
+                intent
         );
     }
 
@@ -4987,9 +6056,8 @@ public class MainActivity extends Activity {
 
         checkout.setOnClickListener(
                 view ->
-                        openWeb(
-                                CHECKOUT,
-                                "Commande"
+                        openCheckout(
+                                checkout
                         )
         );
 
@@ -5550,6 +6618,93 @@ public class MainActivity extends Activity {
         box.addView(button, buttonParams);
 
         return box;
+    }
+
+    private void openCheckout(
+            TextView button
+    ) {
+        if (button != null) {
+            button.setText(
+                    "Ouverture de la commande…"
+            );
+
+            button.setEnabled(
+                    false
+            );
+
+            button.setAlpha(
+                    .78f
+            );
+        }
+
+        try {
+            CookieManager
+                    .getInstance()
+                    .flush();
+        } catch (Throwable ignored) {}
+
+        try {
+            Intent intent =
+                    new Intent(
+                            this,
+                            WebActivity.class
+                    );
+
+            intent.putExtra(
+                    WebActivity.EXTRA_URL,
+                    CART
+            );
+
+            intent.putExtra(
+                    WebActivity.EXTRA_TITLE,
+                    "Commande"
+            );
+
+            intent.putExtra(
+                    WebActivity.EXTRA_RESOLVE_CHECKOUT,
+                    true
+            );
+
+            startActivity(
+                    intent
+            );
+
+        } catch (Throwable ignored) {
+            if (button != null) {
+                button.setEnabled(
+                        true
+                );
+
+                button.setAlpha(
+                        1f
+                );
+
+                button.setText(
+                        "Passer à la commande"
+                );
+            }
+        }
+
+        if (button != null) {
+            button.postDelayed(
+                    () -> {
+                        if (button.isAttachedToWindow()) {
+                            button.setEnabled(
+                                    true
+                            );
+
+                            button.setAlpha(
+                                    1f
+                            );
+
+                            button.setText(
+                                    "Passer à la commande"
+                            );
+                        }
+                    },
+                    1200L
+            );
+        }
     }
 
     private void openWeb(

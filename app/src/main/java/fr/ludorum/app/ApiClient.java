@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -42,6 +43,31 @@ final class ApiClient {
         }
     }
 
+    static final class ProductReview {
+        final int id;
+        final String reviewer;
+        final String review;
+        final int rating;
+        final String date;
+        final boolean verified;
+
+        ProductReview(
+                int id,
+                String reviewer,
+                String review,
+                int rating,
+                String date,
+                boolean verified
+        ) {
+            this.id = id;
+            this.reviewer = reviewer == null ? "" : reviewer;
+            this.review = review == null ? "" : review;
+            this.rating = Math.max(0, Math.min(5, rating));
+            this.date = date == null ? "" : date;
+            this.verified = verified;
+        }
+    }
+
     private static final ExecutorService EXECUTOR =
             Executors.newFixedThreadPool(4);
 
@@ -51,6 +77,7 @@ final class ApiClient {
     private static final long PRODUCTS_CACHE_MS = 90000L;
     private static final long PRODUCT_CACHE_MS = 90000L;
     private static final long CATEGORY_CACHE_MS = 300000L;
+    private static final long REVIEW_CACHE_MS = 60000L;
 
     /*
      * Caches volontairement TYPÉS.
@@ -85,6 +112,12 @@ final class ApiClient {
             new ConcurrentHashMap<>();
 
     private static final Map<Integer, Long> CHILD_CATEGORIES_CACHE_TIME =
+            new ConcurrentHashMap<>();
+
+    private static final Map<Integer, List<ProductReview>> REVIEW_CACHE =
+            new ConcurrentHashMap<>();
+
+    private static final Map<Integer, Long> REVIEW_CACHE_TIME =
             new ConcurrentHashMap<>();
 
     private static volatile List<ProductCategory> topCategoriesCache = null;
@@ -324,6 +357,155 @@ final class ApiClient {
                 if (connection != null) connection.disconnect();
             }
         });
+    }
+
+    static void getProductReviews(
+            int productId,
+            Callback<List<ProductReview>> callback
+    ) {
+        if (productId <= 0) {
+            MAIN.post(
+                    () -> callback.onSuccess(
+                            new ArrayList<>()
+                    )
+            );
+            return;
+        }
+
+        Long cacheTime =
+                REVIEW_CACHE_TIME.get(
+                        productId
+                );
+
+        List<ProductReview> cached =
+                REVIEW_CACHE.get(
+                        productId
+                );
+
+        if (cached != null &&
+                fresh(
+                        cacheTime,
+                        REVIEW_CACHE_MS
+                )) {
+            List<ProductReview> copy =
+                    new ArrayList<>(
+                            cached
+                    );
+
+            MAIN.post(
+                    () -> callback.onSuccess(
+                            copy
+                    )
+            );
+            return;
+        }
+
+        EXECUTOR.execute(
+                () -> {
+                    HttpURLConnection connection = null;
+
+                    try {
+                        connection =
+                                open(
+                                        STORE +
+                                        "/products/reviews" +
+                                        "?product_id=" +
+                                        productId +
+                                        "&per_page=10"
+                                );
+
+                        int status =
+                                connection.getResponseCode();
+
+                        if (status < 200 ||
+                                status >= 300) {
+                            throw new Exception(
+                                    "HTTP " + status
+                            );
+                        }
+
+                        JSONArray array =
+                                new JSONArray(
+                                        read(
+                                                connection.getInputStream()
+                                        )
+                                );
+
+                        List<ProductReview> reviews =
+                                new ArrayList<>();
+
+                        for (int i = 0;
+                             i < array.length();
+                             i++) {
+                            JSONObject raw =
+                                    array.optJSONObject(i);
+
+                            if (raw == null) {
+                                continue;
+                            }
+
+                            reviews.add(
+                                    new ProductReview(
+                                            raw.optInt("id"),
+                                            raw.optString(
+                                                    "reviewer",
+                                                    "Joueur Ludorum"
+                                            ),
+                                            raw.optString(
+                                                    "review",
+                                                    ""
+                                            ),
+                                            raw.optInt(
+                                                    "rating",
+                                                    0
+                                            ),
+                                            raw.optString(
+                                                    "formatted_date_created",
+                                                    raw.optString(
+                                                            "date_created",
+                                                            ""
+                                                    )
+                                            ),
+                                            raw.optBoolean(
+                                                    "verified",
+                                                    false
+                                            )
+                                    )
+                            );
+                        }
+
+                        REVIEW_CACHE.put(
+                                productId,
+                                new ArrayList<>(
+                                        reviews
+                                )
+                        );
+
+                        REVIEW_CACHE_TIME.put(
+                                productId,
+                                System.currentTimeMillis()
+                        );
+
+                        MAIN.post(
+                                () -> callback.onSuccess(
+                                        reviews
+                                )
+                        );
+
+                    } catch (Exception error) {
+                        MAIN.post(
+                                () -> callback.onError(
+                                        error
+                                )
+                        );
+
+                    } finally {
+                        if (connection != null) {
+                            connection.disconnect();
+                        }
+                    }
+                }
+        );
     }
 
     static void getProductBySlug(
@@ -731,7 +913,7 @@ final class ApiClient {
         connection.setUseCaches(true);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Connection", "keep-alive");
-        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.22");
+        connection.setRequestProperty("User-Agent", "LudorumAndroid/1.1.23");
         connection.setInstanceFollowRedirects(true);
         return connection;
     }
