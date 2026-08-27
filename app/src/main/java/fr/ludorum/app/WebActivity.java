@@ -439,7 +439,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.23"
+                " LudorumAndroid/1.1.24"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1988,51 +1988,219 @@ public class WebActivity extends Activity {
                 View.VISIBLE
         );
 
+        // WooCommerce Blocks can render the checkout CTA AFTER
+        // onPageFinished. We therefore install a short-lived resolver
+        // inside the real cart page instead of guessing a checkout URL.
         String script =
                 "(function(){" +
+                "try{" +
+                "if(window.__ludorumCheckoutResolverInstalled){return 'already';}" +
+                "window.__ludorumCheckoutResolverInstalled=true;" +
+
+                "function norm(v){" +
+                "return String(v||'').toLowerCase()" +
+                ".normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')" +
+                ".replace(/\\s+/g,' ').trim();" +
+                "}" +
+
+                "function usable(el){" +
+                "if(!el)return false;" +
+                "var s=window.getComputedStyle?getComputedStyle(el):null;" +
+                "if(s&&(s.display==='none'||s.visibility==='hidden'))return false;" +
+                "return true;" +
+                "}" +
+
+                "function go(el){" +
+                "if(!el||!usable(el))return false;" +
+                "try{" +
+                "var href=el.href||el.getAttribute&&el.getAttribute('href');" +
+                "if(href&&href!=='#'&&!/^javascript:/i.test(href)){" +
+                "window.location.href=href;" +
+                "return true;" +
+                "}" +
+                "}catch(e){}" +
+                "try{" +
+                "el.click();" +
+                "return true;" +
+                "}catch(e){}" +
+                "return false;" +
+                "}" +
+
+                "function findCheckout(){" +
                 "var selectors=[" +
                 "'a.checkout-button'," +
                 "'.wc-proceed-to-checkout a'," +
+                "'.wc-proceed-to-checkout button'," +
                 "'a.wc-block-cart__submit-button'," +
+                "'button.wc-block-cart__submit-button'," +
                 "'.wc-block-cart__submit-container a'," +
-                "'a[href*=checkout]'," +
-                "'a[href*=commande]'," +
-                "'a[href*=order-pay]'" +
+                "'.wc-block-cart__submit-container button'," +
+                "'.wc-block-components-button.wc-block-cart__submit-button'," +
+                "'a[href*=\"checkout\"]'," +
+                "'a[href*=\"commande\"]'," +
+                "'button[data-block-name*=\"checkout\"]'" +
                 "];" +
+
                 "for(var i=0;i<selectors.length;i++){" +
-                "var a=document.querySelector(selectors[i]);" +
-                "if(a&&a.href){" +
-                "window.location.href=a.href;" +
-                "return 'go';" +
+                "var nodes=document.querySelectorAll(selectors[i]);" +
+                "for(var j=0;j<nodes.length;j++){" +
+                "if(go(nodes[j]))return true;" +
                 "}" +
                 "}" +
-                "return 'none';" +
+
+                "var clickable=document.querySelectorAll('a,button,[role=\"button\"]');" +
+                "for(var k=0;k<clickable.length;k++){" +
+                "var t=norm(clickable[k].innerText||clickable[k].textContent);" +
+                "if(t===" +
+                "'passer a la commande'||" +
+                "t.indexOf('passer a la commande')>=0||" +
+                "t.indexOf('finaliser la commande')>=0||" +
+                "t.indexOf('proceder a la commande')>=0||" +
+                "t.indexOf('proceed to checkout')>=0||" +
+                "t==='commander'){" +
+                "if(go(clickable[k]))return true;" +
+                "}" +
+                "}" +
+
+                "try{" +
+                "if(window.wc_cart_params&&window.wc_cart_params.checkout_url){" +
+                "window.location.href=window.wc_cart_params.checkout_url;" +
+                "return true;" +
+                "}" +
+                "}catch(e){}" +
+
+                "return false;" +
+                "}" +
+
+                "if(findCheckout())return 'go';" +
+
+                "var tries=0;" +
+                "var timer=setInterval(function(){" +
+                "tries++;" +
+                "if(findCheckout()){" +
+                "clearInterval(timer);" +
+                "try{observer.disconnect();}catch(e){}" +
+                "return;" +
+                "}" +
+                "if(tries>=32){" +
+                "clearInterval(timer);" +
+                "try{observer.disconnect();}catch(e){}" +
+                "}" +
+                "},250);" +
+
+                "var observer=new MutationObserver(function(){" +
+                "if(findCheckout()){" +
+                "clearInterval(timer);" +
+                "try{observer.disconnect();}catch(e){}" +
+                "}" +
+                "});" +
+                "observer.observe(document.documentElement||document.body,{" +
+                "childList:true,subtree:true,attributes:true" +
+                "});" +
+
+                "return 'armed';" +
+                "}catch(e){return 'error';}" +
                 "})()";
 
         view.evaluateJavascript(
                 script,
-                result -> {
-                    if (result != null &&
-                            result.contains(
-                                    "go"
-                            )) {
+                ignored -> {
+                    // Do not redirect to a guessed /checkout/ URL.
+                    // Give Woo Blocks time to hydrate and expose its real CTA.
+                }
+        );
+
+        // If the cart did not expose a CTA after hydration, try to discover
+        // an actual published WordPress checkout page. Still no guessed slug.
+        view.postDelayed(
+                () -> {
+                    if (!checkoutResolverMode ||
+                            view == null) {
                         return;
                     }
 
-                    // Standard Woo fallback only if the cart template did
-                    // not expose its real checkout link.
-                    checkoutResolverMode =
-                            false;
+                    String discover =
+                            "(function(){" +
+                            "try{" +
+                            "fetch('/wp-json/wp/v2/pages?per_page=100&_fields=link,slug,title,content'," +
+                            "{credentials:'same-origin'})" +
+                            ".then(function(r){return r.ok?r.json():[];})" +
+                            ".then(function(pages){" +
+                            "for(var i=0;i<pages.length;i++){" +
+                            "var p=pages[i]||{};" +
+                            "var title=String((p.title&&p.title.rendered)||'').toLowerCase();" +
+                            "var slug=String(p.slug||'').toLowerCase();" +
+                            "var content=String((p.content&&p.content.rendered)||'').toLowerCase();" +
+                            "var checkoutMarkup=" +
+                            "content.indexOf('wc-block-checkout')>=0||" +
+                            "content.indexOf('woocommerce-checkout')>=0||" +
+                            "content.indexOf('woocommerce_checkout')>=0||" +
+                            "content.indexOf('checkout-order-review')>=0;" +
+                            "var checkoutName=" +
+                            "title.indexOf('commande')>=0||" +
+                            "title.indexOf('checkout')>=0||" +
+                            "slug.indexOf('checkout')>=0;" +
+                            "if(p.link&&(checkoutMarkup||checkoutName)){" +
+                            "window.location.href=p.link;" +
+                            "return;" +
+                            "}" +
+                            "}" +
+                            "}).catch(function(){});" +
+                            "return 'discovering';" +
+                            "}catch(e){return 'error';}" +
+                            "})()";
 
-                    view.setVisibility(
-                            View.VISIBLE
+                    view.evaluateJavascript(
+                            discover,
+                            null
                     );
+                },
+                4300L
+        );
 
-                    view.loadUrl(
-                            BASE +
-                            "/checkout/"
-                    );
-                }
+        // Final safety: never send the customer to a 404. If no checkout
+        // destination was discovered, reveal the real Woo cart and let the
+        // customer use its own checkout CTA.
+        view.postDelayed(
+                () -> {
+                    if (!checkoutResolverMode ||
+                            view == null) {
+                        return;
+                    }
+
+                    Uri current = null;
+
+                    try {
+                        current =
+                                Uri.parse(
+                                        view.getUrl()
+                                );
+                    } catch (Throwable ignored) {}
+
+                    if (current != null &&
+                            isCartPath(
+                                    current
+                            )) {
+                        checkoutResolverMode =
+                                false;
+
+                        checkoutResolutionAttempted =
+                                false;
+
+                        title.setText(
+                                "Panier"
+                        );
+
+                        progress.setVisibility(
+                                View.GONE
+                        );
+
+                        view.setVisibility(
+                                View.VISIBLE
+                        );
+                    }
+                },
+                8200L
         );
     }
 
@@ -2201,8 +2369,19 @@ public class WebActivity extends Activity {
                 checkoutResolverMode =
                         false;
 
+                checkoutResolutionAttempted =
+                        false;
+
                 cartMode =
                         false;
+
+                title.setText(
+                        "Commande"
+                );
+
+                progress.setVisibility(
+                        View.VISIBLE
+                );
 
                 web.setVisibility(
                         View.VISIBLE
@@ -2679,6 +2858,16 @@ public class WebActivity extends Activity {
                         )) {
                     checkoutResolverMode =
                             false;
+
+                    checkoutResolutionAttempted =
+                            false;
+
+                    cartMode =
+                            false;
+
+                    title.setText(
+                            "Commande"
+                    );
 
                     view.setVisibility(
                             View.VISIBLE

@@ -6625,7 +6625,7 @@ public class MainActivity extends Activity {
     ) {
         if (button != null) {
             button.setText(
-                    "Ouverture de la commande…"
+                    "Préparation de la commande…"
             );
 
             button.setEnabled(
