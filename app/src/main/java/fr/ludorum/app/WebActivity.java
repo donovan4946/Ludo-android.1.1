@@ -44,6 +44,7 @@ public class WebActivity extends Activity {
     static final String EXTRA_TITLE = "title";
     static final String EXTRA_ALLOW_PRODUCT_PAGE = "allow_product_page";
     static final String EXTRA_RESOLVE_CHECKOUT = "resolve_checkout";
+    static final String EXTRA_NATIVE_CART_JSON = "native_cart_json";
 
     private static final String BASE = "https://ludorum.fr";
     private static final String ACCOUNT = BASE + "/mon-compte/";
@@ -67,6 +68,11 @@ public class WebActivity extends Activity {
     private boolean allowProductPage = false;
     private boolean checkoutResolverMode = false;
     private boolean checkoutResolutionAttempted = false;
+    private boolean checkoutCartSyncComplete = false;
+    private boolean checkoutJourneyMode = false;
+    private boolean keepCheckoutCartInWeb = false;
+    private int checkoutBounceCount = 0;
+    private String checkoutCartJson = "[]";
     private String appScriptCache;
     private static volatile String sharedAppScriptCache;
 
@@ -101,6 +107,17 @@ public class WebActivity extends Activity {
                         EXTRA_RESOLVE_CHECKOUT,
                         false
                 );
+
+        String suppliedCart =
+                getIntent().getStringExtra(
+                        EXTRA_NATIVE_CART_JSON
+                );
+
+        checkoutCartJson =
+                suppliedCart == null ||
+                suppliedCart.trim().isEmpty()
+                        ? "[]"
+                        : suppliedCart;
 
         initialUrl = url == null ? BASE : url;
         String initialLower =
@@ -439,7 +456,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.24"
+                " LudorumAndroid/1.1.25"
         );
 
         CookieManager cookies = CookieManager.getInstance();
@@ -1682,16 +1699,22 @@ public class WebActivity extends Activity {
         Uri uri = null;
 
         try {
-            uri = Uri.parse(url);
+            uri = Uri.parse(
+                    url
+            );
         } catch (Exception ignored) {}
 
         if (uri == null ||
-                !isLudorumHost(uri)) {
+                !isLudorumHost(
+                        uri
+                )) {
             return;
         }
 
         String path =
-                pathOf(uri);
+                pathOf(
+                        uri
+                );
 
         String query =
                 uri.getQuery() == null
@@ -1701,19 +1724,63 @@ public class WebActivity extends Activity {
                                         java.util.Locale.ROOT
                                 );
 
-        if (path.contains("/panier")
-                || path.contains("/cart")
-                || path.contains("/commande")
-                || path.contains("/checkout")
-                || path.contains("/order-pay")
-                || path.contains("/order-received")
-                || query.contains("wc-ajax=checkout")
-                || query.contains("wc-api=")) {
-            cartMode = true;
+        boolean checkoutPath =
+                path.contains(
+                        "/commande"
+                ) ||
+                path.contains(
+                        "/checkout"
+                ) ||
+                path.contains(
+                        "/order-pay"
+                ) ||
+                path.contains(
+                        "/order-received"
+                ) ||
+                query.contains(
+                        "wc-ajax=checkout"
+                ) ||
+                query.contains(
+                        "wc-api="
+                ) ||
+                query.contains(
+                        "pay_for_order="
+                ) ||
+                query.contains(
+                        "key=wc_order_"
+                );
+
+        boolean cartPath =
+                path.contains(
+                        "/panier"
+                ) ||
+                path.contains(
+                        "/cart"
+                );
+
+        if (checkoutPath) {
+            checkoutJourneyMode =
+                    true;
+
+            cartMode =
+                    false;
+
+        } else if (cartPath &&
+                !checkoutResolverMode) {
+            cartMode =
+                    true;
+
+            if (!keepCheckoutCartInWeb) {
+                checkoutJourneyMode =
+                        false;
+            }
         }
 
-        if (path.contains("/mon-compte")) {
-            accountMode = true;
+        if (path.contains(
+                "/mon-compte"
+        )) {
+            accountMode =
+                    true;
         }
     }
 
@@ -1981,20 +2048,204 @@ public class WebActivity extends Activity {
                 false;
 
         title.setText(
-                "Commande"
+                checkoutCartSyncComplete
+                        ? "Commande"
+                        : "Synchronisation du panier…"
         );
 
         progress.setVisibility(
                 View.VISIBLE
         );
 
-        // WooCommerce Blocks can render the checkout CTA AFTER
-        // onPageFinished. We therefore install a short-lived resolver
-        // inside the real cart page instead of guessing a checkout URL.
+        if (!checkoutCartSyncComplete) {
+            synchronizeCheckoutCookieCart(
+                    view
+            );
+            return;
+        }
+
+        armRealCheckoutButton(
+                view
+        );
+    }
+
+    private void synchronizeCheckoutCookieCart(
+            WebView view
+    ) {
+        final String desiredJson;
+
+        try {
+            desiredJson =
+                    JSONObject.quote(
+                            checkoutCartJson == null
+                                    ? "[]"
+                                    : checkoutCartJson
+                    );
+
+        } catch (Throwable error) {
+            checkoutResolutionAttempted =
+                    false;
+
+            revealCheckoutCart(
+                    "Panier"
+            );
+            return;
+        }
+
+        // Important: this deliberately uses the WebView's own cookie session.
+        // GET /cart supplies a Nonce and a Cart-Token for THAT browser session.
+        // We then rebuild this browser cart to exactly match the native cart.
+        String script =
+                "(function(){" +
+                "if(window.__ludorumCheckoutCartSyncRunning)return 'running';" +
+                "window.__ludorumCheckoutCartSyncRunning=true;" +
+                "var desired=[];" +
+                "try{desired=JSON.parse(" +
+                desiredJson +
+                ");}catch(e){desired=[];}" +
+
+                "var base='/wp-json/wc/store/v1/cart';" +
+                "var nonce='';" +
+                "var token='';" +
+
+                "function absorb(r){" +
+                "try{nonce=r.headers.get('Nonce')||nonce;}catch(e){}" +
+                "try{token=r.headers.get('Cart-Token')||token;}catch(e){}" +
+                "return r;" +
+                "}" +
+
+                "function headers(){" +
+                "var h={'Accept':'application/json'};" +
+                "if(nonce)h['Nonce']=nonce;" +
+                "else if(token)h['Cart-Token']=token;" +
+                "return h;" +
+                "}" +
+
+                "function post(url){" +
+                "return fetch(url,{" +
+                "method:'POST'," +
+                "credentials:'same-origin'," +
+                "cache:'no-store'," +
+                "headers:headers()" +
+                "}).then(absorb).then(function(r){" +
+                "return r.text().then(function(t){" +
+                "if(!r.ok)throw new Error(t||('HTTP '+r.status));" +
+                "try{return JSON.parse(t);}catch(e){return {};}" +
+                "});" +
+                "});" +
+                "}" +
+
+                "fetch(base,{" +
+                "credentials:'same-origin'," +
+                "cache:'no-store'," +
+                "headers:{'Accept':'application/json'}" +
+                "})" +
+                ".then(absorb)" +
+                ".then(function(r){" +
+                "if(!r.ok)throw new Error('GET cart '+r.status);" +
+                "return r.json();" +
+                "})" +
+                ".then(async function(cart){" +
+                "var current=(cart&&cart.items)||[];" +
+
+                // Remove every browser-session item first so quantities
+                // cannot duplicate an older site cart.
+                "for(var i=0;i<current.length;i++){" +
+                "var key=current[i]&&current[i].key;" +
+                "if(!key)continue;" +
+                "await post(base+'/remove-item?key='+encodeURIComponent(key));" +
+                "}" +
+
+                // Recreate exact native quantities in cookie session.
+                "for(var j=0;j<desired.length;j++){" +
+                "var d=desired[j]||{};" +
+                "var id=parseInt(d.id||0,10);" +
+                "var qty=parseInt(d.quantity||0,10);" +
+                "if(!id||qty<=0)continue;" +
+                "await post(base+'/add-item?id='+encodeURIComponent(id)+'&quantity='+encodeURIComponent(qty));" +
+                "}" +
+
+                "var verify=await fetch(base,{" +
+                "credentials:'same-origin'," +
+                "cache:'no-store'," +
+                "headers:{'Accept':'application/json'}" +
+                "}).then(absorb);" +
+                "if(!verify.ok)throw new Error('verify '+verify.status);" +
+                "var verified=await verify.json();" +
+                "var items=(verified&&verified.items)||[];" +
+                "var got={};" +
+                "for(var k=0;k<items.length;k++){" +
+                "var it=items[k]||{};" +
+                "var iid=parseInt(it.id||0,10);" +
+                "var iq=parseInt(it.quantity||0,10);" +
+                "if(iid)got[iid]=(got[iid]||0)+iq;" +
+                "}" +
+                "var want={};" +
+                "for(var q=0;q<desired.length;q++){" +
+                "var wd=desired[q]||{};" +
+                "var wid=parseInt(wd.id||0,10);" +
+                "var wq=parseInt(wd.quantity||0,10);" +
+                "if(wid&&wq>0)want[wid]=(want[wid]||0)+wq;" +
+                "}" +
+                "var ok=true;" +
+                "Object.keys(want).forEach(function(key){" +
+                "if((got[key]||0)!==want[key])ok=false;" +
+                "});" +
+                "Object.keys(got).forEach(function(key){" +
+                "if((want[key]||0)!==got[key])ok=false;" +
+                "});" +
+                "if(!ok)throw new Error('cart mismatch');" +
+
+                "window.__ludorumCheckoutCartSyncRunning=false;" +
+                "if(window.LudorumAndroidBridge&&" +
+                "typeof window.LudorumAndroidBridge.checkoutCartSynced==='function'){" +
+                "window.LudorumAndroidBridge.checkoutCartSynced(true,'');" +
+                "}" +
+                "})" +
+                ".catch(function(e){" +
+                "window.__ludorumCheckoutCartSyncRunning=false;" +
+                "if(window.LudorumAndroidBridge&&" +
+                "typeof window.LudorumAndroidBridge.checkoutCartSynced==='function'){" +
+                "window.LudorumAndroidBridge.checkoutCartSynced(false,String(e&&e.message||e||'sync failed'));" +
+                "}" +
+                "});" +
+                "return 'syncing';" +
+                "})()";
+
+        view.evaluateJavascript(
+                script,
+                null
+        );
+
+        // Network/security fallback: never keep an invisible WebView forever.
+        view.postDelayed(
+                () -> {
+                    if (checkoutResolverMode &&
+                            !checkoutCartSyncComplete &&
+                            checkoutResolutionAttempted) {
+                        checkoutResolutionAttempted =
+                                false;
+
+                        revealCheckoutCart(
+                                "Panier"
+                        );
+                    }
+                },
+                10000L
+        );
+    }
+
+    private void armRealCheckoutButton(
+            WebView view
+    ) {
+        title.setText(
+                "Commande"
+        );
+
         String script =
                 "(function(){" +
                 "try{" +
-                "if(window.__ludorumCheckoutResolverInstalled){return 'already';}" +
+                "if(window.__ludorumCheckoutResolverInstalled)return 'already';" +
                 "window.__ludorumCheckoutResolverInstalled=true;" +
 
                 "function norm(v){" +
@@ -2019,10 +2270,7 @@ public class WebActivity extends Activity {
                 "return true;" +
                 "}" +
                 "}catch(e){}" +
-                "try{" +
-                "el.click();" +
-                "return true;" +
-                "}catch(e){}" +
+                "try{el.click();return true;}catch(e){}" +
                 "return false;" +
                 "}" +
 
@@ -2035,10 +2283,7 @@ public class WebActivity extends Activity {
                 "'button.wc-block-cart__submit-button'," +
                 "'.wc-block-cart__submit-container a'," +
                 "'.wc-block-cart__submit-container button'," +
-                "'.wc-block-components-button.wc-block-cart__submit-button'," +
-                "'a[href*=\"checkout\"]'," +
-                "'a[href*=\"commande\"]'," +
-                "'button[data-block-name*=\"checkout\"]'" +
+                "'.wc-block-components-button.wc-block-cart__submit-button'" +
                 "];" +
 
                 "for(var i=0;i<selectors.length;i++){" +
@@ -2051,9 +2296,7 @@ public class WebActivity extends Activity {
                 "var clickable=document.querySelectorAll('a,button,[role=\"button\"]');" +
                 "for(var k=0;k<clickable.length;k++){" +
                 "var t=norm(clickable[k].innerText||clickable[k].textContent);" +
-                "if(t===" +
-                "'passer a la commande'||" +
-                "t.indexOf('passer a la commande')>=0||" +
+                "if(t.indexOf('passer a la commande')>=0||" +
                 "t.indexOf('finaliser la commande')>=0||" +
                 "t.indexOf('proceder a la commande')>=0||" +
                 "t.indexOf('proceed to checkout')>=0||" +
@@ -2068,7 +2311,6 @@ public class WebActivity extends Activity {
                 "return true;" +
                 "}" +
                 "}catch(e){}" +
-
                 "return false;" +
                 "}" +
 
@@ -2085,6 +2327,10 @@ public class WebActivity extends Activity {
                 "if(tries>=32){" +
                 "clearInterval(timer);" +
                 "try{observer.disconnect();}catch(e){}" +
+                "if(window.LudorumAndroidBridge&&" +
+                "typeof window.LudorumAndroidBridge.checkoutButtonMissing==='function'){" +
+                "window.LudorumAndroidBridge.checkoutButtonMissing();" +
+                "}" +
                 "}" +
                 "},250);" +
 
@@ -2094,6 +2340,7 @@ public class WebActivity extends Activity {
                 "try{observer.disconnect();}catch(e){}" +
                 "}" +
                 "});" +
+
                 "observer.observe(document.documentElement||document.body,{" +
                 "childList:true,subtree:true,attributes:true" +
                 "});" +
@@ -2104,104 +2351,40 @@ public class WebActivity extends Activity {
 
         view.evaluateJavascript(
                 script,
-                ignored -> {
-                    // Do not redirect to a guessed /checkout/ URL.
-                    // Give Woo Blocks time to hydrate and expose its real CTA.
-                }
+                null
+        );
+    }
+
+    private void revealCheckoutCart(
+            String screenTitle
+    ) {
+        checkoutResolverMode =
+                false;
+
+        checkoutResolutionAttempted =
+                false;
+
+        keepCheckoutCartInWeb =
+                true;
+
+        cartMode =
+                false;
+
+        title.setText(
+                screenTitle == null
+                        ? "Panier"
+                        : screenTitle
         );
 
-        // If the cart did not expose a CTA after hydration, try to discover
-        // an actual published WordPress checkout page. Still no guessed slug.
-        view.postDelayed(
-                () -> {
-                    if (!checkoutResolverMode ||
-                            view == null) {
-                        return;
-                    }
-
-                    String discover =
-                            "(function(){" +
-                            "try{" +
-                            "fetch('/wp-json/wp/v2/pages?per_page=100&_fields=link,slug,title,content'," +
-                            "{credentials:'same-origin'})" +
-                            ".then(function(r){return r.ok?r.json():[];})" +
-                            ".then(function(pages){" +
-                            "for(var i=0;i<pages.length;i++){" +
-                            "var p=pages[i]||{};" +
-                            "var title=String((p.title&&p.title.rendered)||'').toLowerCase();" +
-                            "var slug=String(p.slug||'').toLowerCase();" +
-                            "var content=String((p.content&&p.content.rendered)||'').toLowerCase();" +
-                            "var checkoutMarkup=" +
-                            "content.indexOf('wc-block-checkout')>=0||" +
-                            "content.indexOf('woocommerce-checkout')>=0||" +
-                            "content.indexOf('woocommerce_checkout')>=0||" +
-                            "content.indexOf('checkout-order-review')>=0;" +
-                            "var checkoutName=" +
-                            "title.indexOf('commande')>=0||" +
-                            "title.indexOf('checkout')>=0||" +
-                            "slug.indexOf('checkout')>=0;" +
-                            "if(p.link&&(checkoutMarkup||checkoutName)){" +
-                            "window.location.href=p.link;" +
-                            "return;" +
-                            "}" +
-                            "}" +
-                            "}).catch(function(){});" +
-                            "return 'discovering';" +
-                            "}catch(e){return 'error';}" +
-                            "})()";
-
-                    view.evaluateJavascript(
-                            discover,
-                            null
-                    );
-                },
-                4300L
+        progress.setVisibility(
+                View.GONE
         );
 
-        // Final safety: never send the customer to a 404. If no checkout
-        // destination was discovered, reveal the real Woo cart and let the
-        // customer use its own checkout CTA.
-        view.postDelayed(
-                () -> {
-                    if (!checkoutResolverMode ||
-                            view == null) {
-                        return;
-                    }
-
-                    Uri current = null;
-
-                    try {
-                        current =
-                                Uri.parse(
-                                        view.getUrl()
-                                );
-                    } catch (Throwable ignored) {}
-
-                    if (current != null &&
-                            isCartPath(
-                                    current
-                            )) {
-                        checkoutResolverMode =
-                                false;
-
-                        checkoutResolutionAttempted =
-                                false;
-
-                        title.setText(
-                                "Panier"
-                        );
-
-                        progress.setVisibility(
-                                View.GONE
-                        );
-
-                        view.setVisibility(
-                                View.VISIBLE
-                        );
-                    }
-                },
-                8200L
-        );
+        if (web != null) {
+            web.setVisibility(
+                    View.VISIBLE
+            );
+        }
     }
 
     private boolean routeCommerceToNative(
@@ -2238,6 +2421,12 @@ public class WebActivity extends Activity {
 
         if (path.contains("/panier") ||
                 path.contains("/cart")) {
+            if (checkoutResolverMode ||
+                    checkoutJourneyMode ||
+                    keepCheckoutCartInWeb) {
+                return false;
+            }
+
             openNativeScreen(
                     "cart",
                     null,
@@ -2359,6 +2548,84 @@ public class WebActivity extends Activity {
         String scheme = uri.getScheme().toLowerCase();
 
         if (scheme.equals("http") || scheme.equals("https")) {
+            // During the hidden cart synchronization, cart URLs must stay
+            // inside this WebView. Never route them back to the native cart.
+            if (checkoutResolverMode &&
+                    isLudorumHost(
+                            uri
+                    ) &&
+                    isCartPath(
+                            uri
+                    )) {
+                return false;
+            }
+
+            // If a real checkout started and Woo redirects once to cart,
+            // rebuild the cookie cart once and retry. This handles a late
+            // session-cookie commit without creating a navigation loop.
+            if (checkoutJourneyMode &&
+                    isLudorumHost(
+                            uri
+                    ) &&
+                    isCartPath(
+                            uri
+                    )) {
+                if (checkoutBounceCount < 1) {
+                    checkoutBounceCount++;
+
+                    checkoutJourneyMode =
+                            false;
+
+                    checkoutResolverMode =
+                            true;
+
+                    checkoutCartSyncComplete =
+                            false;
+
+                    checkoutResolutionAttempted =
+                            false;
+
+                    keepCheckoutCartInWeb =
+                            false;
+
+                    cartMode =
+                            false;
+
+                    title.setText(
+                            "Resynchronisation du panier…"
+                    );
+
+                    progress.setVisibility(
+                            View.VISIBLE
+                    );
+
+                    web.setVisibility(
+                            View.INVISIBLE
+                    );
+
+                    return false;
+                }
+
+                checkoutJourneyMode =
+                        false;
+
+                keepCheckoutCartInWeb =
+                        true;
+
+                cartMode =
+                        false;
+
+                title.setText(
+                        "Panier"
+                );
+
+                web.setVisibility(
+                        View.VISIBLE
+                );
+
+                return false;
+            }
+
             if (checkoutResolverMode &&
                     isLudorumHost(
                             uri
@@ -2370,6 +2637,12 @@ public class WebActivity extends Activity {
                         false;
 
                 checkoutResolutionAttempted =
+                        false;
+
+                checkoutJourneyMode =
+                        true;
+
+                keepCheckoutCartInWeb =
                         false;
 
                 cartMode =
@@ -2410,7 +2683,11 @@ public class WebActivity extends Activity {
 
             // Le Panier n'est pas une mini-boutique WordPress.
             // Il ne peut naviguer que vers le panier, le compte et le checkout.
-            if (cartMode && isLudorumHost(uri) && !isCartAllowed(uri)) {
+            if (cartMode &&
+                    !checkoutJourneyMode &&
+                    !checkoutResolverMode &&
+                    isLudorumHost(uri) &&
+                    !isCartAllowed(uri)) {
                 returnToNativeHome();
                 return true;
             }
@@ -2722,6 +2999,73 @@ public class WebActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void checkoutCartSynced(
+                boolean success,
+                String message
+        ) {
+            try {
+                runOnUiThread(
+                        () -> {
+                            if (!checkoutResolverMode ||
+                                    web == null) {
+                                return;
+                            }
+
+                            checkoutResolutionAttempted =
+                                    false;
+
+                            if (!success) {
+                                revealCheckoutCart(
+                                        "Panier"
+                                );
+                                return;
+                            }
+
+                            checkoutCartSyncComplete =
+                                    true;
+
+                            try {
+                                CookieManager
+                                        .getInstance()
+                                        .flush();
+                            } catch (Throwable ignored) {}
+
+                            title.setText(
+                                    "Préparation de la commande…"
+                            );
+
+                            progress.setVisibility(
+                                    View.VISIBLE
+                            );
+
+                            web.setVisibility(
+                                    View.INVISIBLE
+                            );
+
+                            web.reload();
+                        }
+                );
+            } catch (Throwable ignored) {}
+        }
+
+        @JavascriptInterface
+        public void checkoutButtonMissing() {
+            try {
+                runOnUiThread(
+                        () -> {
+                            if (!checkoutResolverMode) {
+                                return;
+                            }
+
+                            revealCheckoutCart(
+                                    "Panier"
+                            );
+                        }
+                );
+            } catch (Throwable ignored) {}
+        }
+
+        @JavascriptInterface
         public void cartChanged() {
             try {
                 runOnUiThread(
@@ -2862,6 +3206,12 @@ public class WebActivity extends Activity {
                     checkoutResolutionAttempted =
                             false;
 
+                    checkoutJourneyMode =
+                            true;
+
+                    keepCheckoutCartInWeb =
+                            false;
+
                     cartMode =
                             false;
 
@@ -2875,6 +3225,7 @@ public class WebActivity extends Activity {
                 }
 
                 if (current != null &&
+                        !keepCheckoutCartInWeb &&
                         routeCommerceToNative(current)) {
                     return;
                 }

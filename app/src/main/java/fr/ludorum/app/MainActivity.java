@@ -31,6 +31,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.text.NumberFormat;
@@ -6625,7 +6628,7 @@ public class MainActivity extends Activity {
     ) {
         if (button != null) {
             button.setText(
-                    "Préparation de la commande…"
+                    "Synchronisation du panier…"
             );
 
             button.setEnabled(
@@ -6637,74 +6640,183 @@ public class MainActivity extends Activity {
             );
         }
 
-        try {
-            CookieManager
-                    .getInstance()
-                    .flush();
-        } catch (Throwable ignored) {}
+        // Always ask WooCommerce for the confirmed cart first. This prevents
+        // an optimistic +/- state from being handed to the checkout.
+        CartService.getCart(
+                new CartService.Callback() {
+                    @Override
+                    public void onSuccess(
+                            CartService.CartSnapshot snapshot
+                    ) {
+                        if (!cartMode) {
+                            restoreCheckoutButton(
+                                    button
+                            );
+                            return;
+                        }
 
-        try {
-            Intent intent =
-                    new Intent(
-                            this,
-                            WebActivity.class
-                    );
+                        if (snapshot == null ||
+                                snapshot.items == null ||
+                                snapshot.items.isEmpty()) {
+                            currentCartSnapshot =
+                                    snapshot;
 
-            intent.putExtra(
-                    WebActivity.EXTRA_URL,
-                    CART
-            );
+                            renderCart(
+                                    snapshot,
+                                    "Votre panier est vide."
+                            );
 
-            intent.putExtra(
-                    WebActivity.EXTRA_TITLE,
-                    "Commande"
-            );
+                            restoreCheckoutButton(
+                                    button
+                            );
+                            return;
+                        }
 
-            intent.putExtra(
-                    WebActivity.EXTRA_RESOLVE_CHECKOUT,
-                    true
-            );
+                        currentCartSnapshot =
+                                snapshot;
 
-            startActivity(
-                    intent
-            );
+                        try {
+                            CookieManager
+                                    .getInstance()
+                                    .flush();
+                        } catch (Throwable ignored) {}
 
-        } catch (Throwable ignored) {
-            if (button != null) {
-                button.setEnabled(
-                        true
-                );
+                        try {
+                            Intent intent =
+                                    new Intent(
+                                            MainActivity.this,
+                                            WebActivity.class
+                                    );
 
-                button.setAlpha(
-                        1f
-                );
+                            intent.putExtra(
+                                    WebActivity.EXTRA_URL,
+                                    CART
+                            );
 
-                button.setText(
-                        "Passer à la commande"
-                );
-            }
-        }
+                            intent.putExtra(
+                                    WebActivity.EXTRA_TITLE,
+                                    "Commande"
+                            );
 
-        if (button != null) {
-            button.postDelayed(
-                    () -> {
-                        if (button.isAttachedToWindow()) {
-                            button.setEnabled(
+                            intent.putExtra(
+                                    WebActivity.EXTRA_RESOLVE_CHECKOUT,
                                     true
                             );
 
-                            button.setAlpha(
-                                    1f
+                            intent.putExtra(
+                                    WebActivity.EXTRA_NATIVE_CART_JSON,
+                                    checkoutCartJson(
+                                            snapshot
+                                    )
                             );
 
-                            button.setText(
-                                    "Passer à la commande"
+                            startActivity(
+                                    intent
+                            );
+
+                        } catch (Throwable error) {
+                            renderCart(
+                                    snapshot,
+                                    "Impossible d’ouvrir la commande."
                             );
                         }
-                    },
-                    1200L
-            );
+
+                        restoreCheckoutButton(
+                                button
+                        );
+                    }
+
+                    @Override
+                    public void onError(
+                            String message
+                    ) {
+                        if (cartMode) {
+                            renderCart(
+                                    currentCartSnapshot,
+                                    message == null ||
+                                    message.trim().isEmpty()
+                                            ? "Impossible de préparer la commande."
+                                            : message
+                            );
+                        }
+
+                        restoreCheckoutButton(
+                                button
+                        );
+                    }
+                }
+        );
+    }
+
+    private String checkoutCartJson(
+            CartService.CartSnapshot snapshot
+    ) {
+        JSONArray items =
+                new JSONArray();
+
+        if (snapshot == null ||
+                snapshot.items == null) {
+            return items.toString();
         }
+
+        for (CartService.CartItem item :
+                snapshot.items) {
+            if (item == null ||
+                    item.productId <= 0 ||
+                    item.quantity <= 0) {
+                continue;
+            }
+
+            try {
+                JSONObject value =
+                        new JSONObject();
+
+                value.put(
+                        "id",
+                        item.productId
+                );
+
+                value.put(
+                        "quantity",
+                        item.quantity
+                );
+
+                items.put(
+                        value
+                );
+
+            } catch (Exception ignored) {}
+        }
+
+        return items.toString();
+    }
+
+    private void restoreCheckoutButton(
+            TextView button
+    ) {
+        if (button == null) {
+            return;
+        }
+
+        button.post(
+                () -> {
+                    if (!button.isAttachedToWindow()) {
+                        return;
+                    }
+
+                    button.setEnabled(
+                            true
+                    );
+
+                    button.setAlpha(
+                            1f
+                    );
+
+                    button.setText(
+                            "Passer à la commande"
+                    );
+                }
+        );
     }
 
     private void openWeb(
