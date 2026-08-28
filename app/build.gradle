@@ -10,8 +10,8 @@ android {
         applicationId "fr.ludorum.app"
         minSdk 26
         targetSdk 36
-        versionCode 1126
-        versionName "1.1.26"
+        versionCode 1127
+        versionName "1.1.27"
     }
 
     buildTypes {

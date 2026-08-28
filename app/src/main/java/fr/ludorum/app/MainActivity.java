@@ -1776,118 +1776,70 @@ public class MainActivity extends Activity {
     }
 
     private void addHero() {
-        LinearLayout hero = new LinearLayout(this);
-        hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(
-                Ui.dp(this, 21),
-                Ui.dp(this, 20),
-                Ui.dp(this, 21),
-                Ui.dp(this, 20)
-        );
-        hero.setBackground(
-                Ui.gradient(Ui.NAVY, Ui.BLUE, 22, this)
-        );
-        hero.setElevation(Ui.dp(this, 4));
+        LinearLayout hero =
+                new LinearLayout(this);
 
-        TextView eyebrow =
-                Ui.text(
-                        this,
-                        "BIENVENUE CHEZ LUDORUM",
-                        10,
-                        Color.rgb(255, 207, 58),
-                        true
-                );
-        hero.addView(eyebrow);
+        hero.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        hero.setPadding(
+                Ui.dp(this, 17),
+                Ui.dp(this, 14),
+                Ui.dp(this, 17),
+                Ui.dp(this, 14)
+        );
+
+        hero.setBackground(
+                Ui.gradient(
+                        Ui.NAVY,
+                        Ui.BLUE,
+                        20,
+                        this
+                )
+        );
+
+        hero.setElevation(
+                Ui.dp(this, 3)
+        );
 
         TextView title =
                 Ui.text(
                         this,
                         "Le bon jeu, sans chercher pendant des heures.",
-                        25,
+                        20,
                         Color.WHITE,
                         true
                 );
-        title.setLineSpacing(0, 0.98f);
 
-        LinearLayout.LayoutParams titleParams =
+        title.setGravity(
+                Gravity.CENTER
+        );
+
+        title.setLineSpacing(
+                0,
+                0.98f
+        );
+
+        hero.addView(
+                title,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-        titleParams.topMargin = Ui.dp(this, 8);
-        hero.addView(title, titleParams);
-
-        TextView subtitle =
-                Ui.text(
-                        this,
-                        "Explorez le catalogue ou laissez LudoMatch vous guider selon vos envies.",
-                        14,
-                        Color.rgb(222, 233, 249),
-                        false
-                );
-        subtitle.setLineSpacing(Ui.dp(this, 3), 1f);
-
-        LinearLayout.LayoutParams subtitleParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-        subtitleParams.topMargin = Ui.dp(this, 10);
-        hero.addView(subtitle, subtitleParams);
-
-        LinearLayout mood = new LinearLayout(this);
-        mood.setOrientation(LinearLayout.HORIZONTAL);
-        mood.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView boardGames = Ui.pill(
-                this,
-                "Société",
-                Ui.BLUE,
-                Ui.softPanel(Ui.BLUE),
-                Color.TRANSPARENT
+                )
         );
-        boardGames.setTextSize(11);
 
-        TextView cardGames = Ui.pill(
-                this,
-                "Cartes",
-                Ui.menuAccentText(Ui.YELLOW),
-                Ui.softPanel(Ui.YELLOW),
-                Color.TRANSPARENT
+        LinearLayout actions =
+                new LinearLayout(this);
+
+        actions.setOrientation(
+                LinearLayout.HORIZONTAL
         );
-        cardGames.setTextSize(11);
-
-        TextView accessories = Ui.pill(
-                this,
-                "Accessoires",
-                Ui.RED,
-                Ui.softPanel(Ui.RED),
-                Color.TRANSPARENT
-        );
-        accessories.setTextSize(11);
-
-        mood.addView(boardGames, new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f));
-        LinearLayout.LayoutParams cg = new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f);
-        cg.leftMargin = Ui.dp(this, 8);
-        mood.addView(cardGames, cg);
-        LinearLayout.LayoutParams ag = new LinearLayout.LayoutParams(0, Ui.dp(this, 34), 1f);
-        ag.leftMargin = Ui.dp(this, 8);
-        mood.addView(accessories, ag);
-
-        LinearLayout.LayoutParams moodParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        moodParams.topMargin = Ui.dp(this, 14);
-        hero.addView(mood, moodParams);
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
 
         TextView solo =
                 Ui.pill(
                         this,
-                        "Trouver mon jeu",
+                        "LudoMatch",
                         Color.WHITE,
                         Ui.GREEN,
                         Ui.GREEN
@@ -1896,27 +1848,41 @@ public class MainActivity extends Activity {
         TextView group =
                 Ui.pill(
                         this,
-                        "Choisir à plusieurs",
+                        "LudoMatch Groupe",
                         Ui.NAVY,
                         Color.rgb(255, 199, 43),
                         Color.rgb(255, 199, 43)
                 );
 
-        solo.setTextSize(13);
-        group.setTextSize(13);
+        solo.setTextSize(
+                13
+        );
+
+        group.setTextSize(
+                13
+        );
 
         solo.setOnClickListener(
-                view -> openWeb(LUDOMATCH, "LudoMatch")
+                view ->
+                        openWeb(
+                                LUDOMATCH,
+                                "LudoMatch"
+                        )
         );
+
         group.setOnClickListener(
-                view -> openWeb(LUDOMATCH_GROUP, "LudoMatch Groupe")
+                view ->
+                        openWeb(
+                                LUDOMATCH_GROUP,
+                                "LudoMatch Groupe"
+                        )
         );
 
         actions.addView(
                 solo,
                 new LinearLayout.LayoutParams(
                         0,
-                        Ui.dp(this, 47),
+                        Ui.dp(this, 42),
                         1f
                 )
         );
@@ -1924,19 +1890,31 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams groupParams =
                 new LinearLayout.LayoutParams(
                         0,
-                        Ui.dp(this, 47),
+                        Ui.dp(this, 42),
                         1f
                 );
-        groupParams.leftMargin = Ui.dp(this, 9);
-        actions.addView(group, groupParams);
+
+        groupParams.leftMargin =
+                Ui.dp(this, 8);
+
+        actions.addView(
+                group,
+                groupParams
+        );
 
         LinearLayout.LayoutParams actionParams =
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                 );
-        actionParams.topMargin = Ui.dp(this, 17);
-        hero.addView(actions, actionParams);
+
+        actionParams.topMargin =
+                Ui.dp(this, 12);
+
+        hero.addView(
+                actions,
+                actionParams
+        );
 
         content.addView(
                 hero,
