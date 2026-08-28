@@ -201,54 +201,80 @@ public class WebActivity extends Activity {
                 0
         );
 
-        LinearLayout top =
-                new LinearLayout(this);
-        top.setOrientation(
-                LinearLayout.HORIZONTAL
-        );
-        top.setGravity(
-                Gravity.CENTER_VERTICAL
-        );
+        FrameLayout top =
+                new FrameLayout(this);
+
         top.setPadding(
                 Ui.dp(this, 8),
                 Ui.dp(this, 4),
                 Ui.dp(this, 8),
                 Ui.dp(this, 4)
         );
+
         top.setBackgroundColor(
                 Ui.MENU_CANVAS
         );
+
         top.setElevation(
                 Ui.dp(this, 3)
         );
 
+        LinearLayout leftControls =
+                new LinearLayout(this);
+
+        leftControls.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        leftControls.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
         ImageView menuButton =
                 new ImageView(this);
+
         menuButton.setImageResource(
                 R.drawable.ic_menu
         );
+
         menuButton.setColorFilter(
                 Ui.BLUE
         );
+
         menuButton.setPadding(
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9)
         );
+
         menuButton.setContentDescription(
                 "Ouvrir le menu"
         );
+
         menuButton.setOnClickListener(
                 this::openTopMenu
         );
 
-        top.addView(
+        leftControls.addView(
                 menuButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 42),
                         Ui.dp(this, 42)
                 )
+        );
+
+        FrameLayout.LayoutParams leftParams =
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Ui.dp(this, 42),
+                        Gravity.START |
+                        Gravity.CENTER_VERTICAL
+                );
+
+        top.addView(
+                leftControls,
+                leftParams
         );
 
         title =
@@ -265,28 +291,39 @@ public class WebActivity extends Activity {
 
         ImageView logo =
                 new ImageView(this);
+
         logo.setImageResource(
                 R.drawable.ludorum_logo
         );
+
         logo.setScaleType(
                 ImageView.ScaleType.CENTER_INSIDE
         );
 
-        FrameLayout.LayoutParams logoParams =
+        FrameLayout.LayoutParams logoImageParams =
                 new FrameLayout.LayoutParams(
                         Ui.dp(this, 112),
                         Ui.dp(this, 34),
                         Gravity.CENTER
                 );
+
         logoHost.addView(
                 logo,
-                logoParams
+                logoImageParams
         );
-        logoHost.setClickable(true);
-        logoHost.setFocusable(true);
+
+        logoHost.setClickable(
+                true
+        );
+
+        logoHost.setFocusable(
+                true
+        );
+
         logoHost.setContentDescription(
                 "Retour à l'accueil"
         );
+
         logoHost.setOnClickListener(
                 view ->
                         openNativeScreen(
@@ -296,37 +333,56 @@ public class WebActivity extends Activity {
                         )
         );
 
+        FrameLayout.LayoutParams absoluteLogoParams =
+                new FrameLayout.LayoutParams(
+                        Ui.dp(this, 124),
+                        Ui.dp(this, 42),
+                        Gravity.CENTER
+                );
+
         top.addView(
                 logoHost,
-                new LinearLayout.LayoutParams(
-                        0,
-                        Ui.dp(this, 42),
-                        1f
-                )
+                absoluteLogoParams
+        );
+
+        LinearLayout rightControls =
+                new LinearLayout(this);
+
+        rightControls.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        rightControls.setGravity(
+                Gravity.CENTER_VERTICAL
         );
 
         ImageView searchButton =
                 new ImageView(this);
+
         searchButton.setImageResource(
                 R.drawable.ic_search
         );
+
         searchButton.setColorFilter(
                 Ui.BLUE
         );
+
         searchButton.setPadding(
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9)
         );
+
         searchButton.setContentDescription(
                 "Rechercher"
         );
+
         searchButton.setOnClickListener(
                 this::openTopSearch
         );
 
-        top.addView(
+        rightControls.addView(
                 searchButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 42),
@@ -336,21 +392,26 @@ public class WebActivity extends Activity {
 
         ImageView cartButton =
                 new ImageView(this);
+
         cartButton.setImageResource(
                 R.drawable.ic_cart
         );
+
         cartButton.setColorFilter(
                 Ui.BLUE
         );
+
         cartButton.setPadding(
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9),
                 Ui.dp(this, 9)
         );
+
         cartButton.setContentDescription(
                 "Ouvrir le panier"
         );
+
         cartButton.setOnClickListener(
                 view ->
                         openNativeScreen(
@@ -360,7 +421,7 @@ public class WebActivity extends Activity {
                         )
         );
 
-        top.addView(
+        rightControls.addView(
                 cartButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 42),
@@ -368,7 +429,29 @@ public class WebActivity extends Activity {
                 )
         );
 
-        root.addView(top);
+        FrameLayout.LayoutParams rightParams =
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Ui.dp(this, 42),
+                        Gravity.END |
+                        Gravity.CENTER_VERTICAL
+                );
+
+        top.addView(
+                rightControls,
+                rightParams
+        );
+
+        leftControls.bringToFront();
+        rightControls.bringToFront();
+
+        root.addView(
+                top,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        Ui.dp(this, 50)
+                )
+        );
 
         root.addView(
                 Ui.brandStripe(this),
@@ -456,7 +539,7 @@ public class WebActivity extends Activity {
 
         settings.setUserAgentString(
                 settings.getUserAgentString() +
-                " LudorumAndroid/1.1.25"
+                " LudorumAndroid/1.1.26"
         );
 
         CookieManager cookies = CookieManager.getInstance();

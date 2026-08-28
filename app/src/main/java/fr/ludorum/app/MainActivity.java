@@ -334,14 +334,17 @@ public class MainActivity extends Activity {
                 Ui.dp(this, 5)
         );
 
-        LinearLayout row =
+        FrameLayout row =
+                new FrameLayout(this);
+
+        LinearLayout leftControls =
                 new LinearLayout(this);
 
-        row.setOrientation(
+        leftControls.setOrientation(
                 LinearLayout.HORIZONTAL
         );
 
-        row.setGravity(
+        leftControls.setGravity(
                 Gravity.CENTER_VERTICAL
         );
 
@@ -371,12 +374,25 @@ public class MainActivity extends Activity {
                 this::openCatalogueMenu
         );
 
-        row.addView(
+        leftControls.addView(
                 menuButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 46),
                         Ui.dp(this, 46)
                 )
+        );
+
+        FrameLayout.LayoutParams leftParams =
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Ui.dp(this, 46),
+                        Gravity.START |
+                        Gravity.CENTER_VERTICAL
+                );
+
+        row.addView(
+                leftControls,
+                leftParams
         );
 
         FrameLayout logoHost =
@@ -393,7 +409,7 @@ public class MainActivity extends Activity {
                 ImageView.ScaleType.CENTER_INSIDE
         );
 
-        FrameLayout.LayoutParams logoParams =
+        FrameLayout.LayoutParams logoImageParams =
                 new FrameLayout.LayoutParams(
                         Ui.dp(this, 138),
                         Ui.dp(this, 46),
@@ -402,25 +418,46 @@ public class MainActivity extends Activity {
 
         logoHost.addView(
                 logo,
-                logoParams
+                logoImageParams
         );
 
-        logoHost.setClickable(true);
-        logoHost.setFocusable(true);
+        logoHost.setClickable(
+                true
+        );
+
+        logoHost.setFocusable(
+                true
+        );
+
         logoHost.setContentDescription(
                 "Retour à l'accueil"
         );
+
         logoHost.setOnClickListener(
                 view -> showHome()
         );
 
+        FrameLayout.LayoutParams absoluteLogoParams =
+                new FrameLayout.LayoutParams(
+                        Ui.dp(this, 150),
+                        Ui.dp(this, 46),
+                        Gravity.CENTER
+                );
+
         row.addView(
                 logoHost,
-                new LinearLayout.LayoutParams(
-                        0,
-                        Ui.dp(this, 46),
-                        1f
-                )
+                absoluteLogoParams
+        );
+
+        LinearLayout rightControls =
+                new LinearLayout(this);
+
+        rightControls.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        rightControls.setGravity(
+                Gravity.CENTER_VERTICAL
         );
 
         ImageView searchButton =
@@ -449,7 +486,7 @@ public class MainActivity extends Activity {
                 this::openSearchPanel
         );
 
-        row.addView(
+        rightControls.addView(
                 searchButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 46),
@@ -463,35 +500,59 @@ public class MainActivity extends Activity {
         cartButton.setImageResource(
                 R.drawable.ic_cart
         );
+
         cartButton.setColorFilter(
                 Ui.BLUE
         );
+
         cartButton.setPadding(
                 Ui.dp(this, 10),
                 Ui.dp(this, 10),
                 Ui.dp(this, 10),
                 Ui.dp(this, 10)
         );
+
         cartButton.setContentDescription(
                 "Ouvrir le panier"
         );
+
         cartButton.setOnClickListener(
                 view -> {
                     if (cartMode) {
-                        scroll.smoothScrollTo(0, 0);
+                        scroll.smoothScrollTo(
+                                0,
+                                0
+                        );
                     } else {
                         showCart();
                     }
                 }
         );
 
-        row.addView(
+        rightControls.addView(
                 cartButton,
                 new LinearLayout.LayoutParams(
                         Ui.dp(this, 46),
                         Ui.dp(this, 46)
                 )
         );
+
+        FrameLayout.LayoutParams rightParams =
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Ui.dp(this, 46),
+                        Gravity.END |
+                        Gravity.CENTER_VERTICAL
+                );
+
+        row.addView(
+                rightControls,
+                rightParams
+        );
+
+        // Keep buttons above the logo hit-area if the screen becomes narrow.
+        leftControls.bringToFront();
+        rightControls.bringToFront();
 
         header.addView(
                 row,
@@ -506,7 +567,10 @@ public class MainActivity extends Activity {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                 );
-        stripeParams.topMargin = Ui.dp(this, 6);
+
+        stripeParams.topMargin =
+                Ui.dp(this, 6);
+
         header.addView(
                 Ui.brandStripe(this),
                 stripeParams
