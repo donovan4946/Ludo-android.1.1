@@ -50,6 +50,6 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: ludorum-android-v1.1.24-real-checkout-debug
+          name: ludorum-android-v1.1.25-checkout-session-sync-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
